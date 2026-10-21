@@ -1,4 +1,6 @@
 import { api } from './api.js';
+import { clearAiSettings, getAiSettings, onExternalChange, saveAiSettings, testConnection } from './backend.js';
+import { PROVIDERS } from './lib/providers.js';
 import { act, confirmDialog, esc, fmtDateLong, onRender, refresh, render, state, toast } from './core.js';
 import { renderToday, todayHandlers } from './views/today.js';
 import { focusHandlers, renderFocus, renderTimerPill, tickTimer } from './views/focus.js';
@@ -94,7 +96,7 @@ document.addEventListener('click', async (e) => {
   el.closest('details.menu')?.removeAttribute('open');
   if (action === 'reload') { boot(); return; }
   if (action === 'open-settings') { openSettings(); return; }
-  if (await settingsClick(action)) return;
+  if (await settingsClick(action, el)) return;
   e.preventDefault();
   await dispatch('click', action, el, e);
 });
@@ -145,11 +147,42 @@ document.addEventListener('focusin', (e) => { const el = e.target.closest?.('[da
 
 // ------------------------------------------------------------ settings ---
 
+function providerOptions(selected) {
+  return Object.entries(PROVIDERS).map(([id, p]) => `<option value="${id}" ${id === selected ? 'selected' : ''}>${esc(p.label)}</option>`).join('');
+}
+
 function openSettings() {
   const p = state.boot.preferences;
+  const ai = getAiSettings();
+  const prov = PROVIDERS[ai.provider] || PROVIDERS.gemini;
   const dlg = document.getElementById('settings');
   dlg.innerHTML = `<form data-form="settings">
     <h2 id="settings-title">Settings</h2>
+
+    <fieldset class="ai-settings">
+      <legend>AI coach</legend>
+      <p class="muted small">FocusFlow uses your own API key. Without one, the coach runs in demo mode with simple offline rules.</p>
+      <label class="field"><span>Provider</span>
+        <select name="aiProvider" data-ai="provider">${providerOptions(ai.provider)}</select></label>
+      <label class="field"><span>API key</span>
+        <span class="key-row">
+          <input type="password" name="aiKey" value="${esc(ai.key)}" autocomplete="off" spellcheck="false" placeholder="Paste your key" data-ai="key">
+          <button type="button" class="btn btn-ghost btn-sm" data-action="ai-toggle-key" aria-label="Show key">Show</button>
+        </span></label>
+      <p class="small"><a href="${esc(prov.keyUrl)}" target="_blank" rel="noopener noreferrer" data-ai="key-link">Get a ${esc(prov.label)} key</a> <span class="muted" data-ai="key-hint">${esc(prov.keyHint)}</span></p>
+      <label class="field"><span>Model (optional)</span>
+        <input name="aiModel" value="${esc(ai.model)}" placeholder="${esc(prov.defaultModel)}" autocomplete="off" spellcheck="false" data-ai="model"></label>
+      <div class="key-note">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+        <p>Your key is saved only in this browser and is sent directly to the provider you chose. FocusFlow has no server, so nobody else can see it, and it is never included when you export your data. Any usage is billed to your own account, so a free-tier key or one with a spending limit is a good idea. Don’t save a key on a shared computer.</p>
+      </div>
+      <div class="settings-data">
+        <button type="button" class="btn btn-ghost btn-sm" data-action="ai-test">Test connection</button>
+        ${ai.key ? '<button type="button" class="btn btn-ghost btn-sm btn-danger-text" data-action="ai-remove">Remove key</button>' : ''}
+      </div>
+      <p class="ai-status small" data-ai="status" role="status" aria-live="polite"></p>
+    </fieldset>
+
     <fieldset>
       <legend>Planning defaults</legend>
       <div class="field-row">
@@ -162,46 +195,177 @@ function openSettings() {
       </div>
       <p class="muted small">Time zone: ${esc(p.timezone)}</p>
     </fieldset>
+
     <fieldset>
       <legend>Your data</legend>
+      <p class="muted small">Everything is saved in this browser only${state.boot.persistent ? '' : ' (your browser is blocking site storage, so data will be lost when you close the tab)'}. Export a backup now and then, and import it to move to another browser or computer.</p>
       <div class="settings-data">
-        <a class="btn btn-ghost btn-sm" href="/api/export" download>Export everything (JSON)</a>
+        <button type="button" class="btn btn-ghost btn-sm" data-action="export-data">Export my data</button>
+        <button type="button" class="btn btn-ghost btn-sm" data-action="import-data">Import a backup</button>
+        <input type="file" accept="application/json,.json" data-ai="import-file" hidden>
         <button type="button" class="btn btn-ghost btn-sm" data-action="settings-sample">Replace with sample week</button>
         <button type="button" class="btn btn-ghost btn-sm btn-danger-text" data-action="settings-reset">Delete all data</button>
       </div>
     </fieldset>
+
     <div class="dialog-actions">
       <button type="button" class="btn btn-ghost" data-action="settings-close">Cancel</button>
       <button class="btn btn-primary">Save settings</button>
     </div>
   </form>`;
+
+  // Switching provider updates the key link and the default model hint.
+  dlg.querySelector('[data-ai=provider]').addEventListener('change', (e) => {
+    const next = PROVIDERS[e.target.value];
+    const link = dlg.querySelector('[data-ai=key-link]');
+    link.href = next.keyUrl;
+    link.textContent = `Get a ${next.label} key`;
+    dlg.querySelector('[data-ai=key-hint]').textContent = next.keyHint;
+    dlg.querySelector('[data-ai=model]').placeholder = next.defaultModel;
+    if (e.target.value !== getAiSettings().provider) {
+      dlg.querySelector('[data-ai=key]').value = '';
+      dlg.querySelector('[data-ai=model]').value = '';
+    }
+    setAiStatus('');
+  });
+  dlg.querySelector('[data-ai=import-file]').addEventListener('change', (e) => importFile(e.target.files?.[0]));
   dlg.showModal();
 }
 
-async function settingsClick(action) {
+function setAiStatus(text, tone = '') {
+  const el = document.querySelector('#settings [data-ai=status]');
+  if (!el) return;
+  el.textContent = text;
+  el.dataset.tone = tone;
+}
+
+function aiFormValues() {
   const dlg = document.getElementById('settings');
-  if (action === 'settings-close') { dlg.close(); return true; }
-  if (action === 'settings-sample' || action === 'settings-reset') {
-    dlg.close();
-    const sample = action === 'settings-sample';
-    const ok = await confirmDialog(sample
-      ? 'Replace all your tasks, sessions and journal entries with two weeks of sample data?'
-      : 'Delete all tasks, sessions, journal entries and plans? Export first if you want a copy.', { confirmLabel: sample ? 'Replace' : 'Delete everything' });
-    if (ok) {
-      await act(() => api(sample ? '/api/demo/seed' : '/api/demo/reset', { method: 'POST' }), { success: sample ? 'Sample week loaded' : 'All data deleted' });
-      state.coach.result = null;
-      state.insights.stats = null;
-      if (state.view === 'insights') loadStats();
-    }
-    return true;
+  return {
+    provider: dlg.querySelector('[data-ai=provider]').value,
+    key: dlg.querySelector('[data-ai=key]').value.trim(),
+    model: dlg.querySelector('[data-ai=model]').value.trim(),
+  };
+}
+
+async function exportData() {
+  try {
+    const data = await api('/api/export');
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `focusflow-backup-${state.boot.today}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast('Backup downloaded');
+  } catch (err) {
+    toast(err.message, { tone: 'error' });
   }
-  return false;
+}
+
+async function importFile(file) {
+  if (!file) return;
+  document.getElementById('settings').close();
+  let data;
+  try {
+    if (file.size > 4_000_000) throw new Error('That file is too large to be a FocusFlow backup.');
+    data = JSON.parse(await file.text());
+  } catch (err) {
+    toast(err instanceof SyntaxError ? 'That file isn’t valid JSON. Choose a file made with “Export my data”.' : err.message, { tone: 'error' });
+    return;
+  }
+  const ok = await confirmDialog('Replace everything in FocusFlow with this backup? Your current tasks, sessions and journal will be overwritten.', { confirmLabel: 'Replace with backup' });
+  if (!ok) return;
+  await act(() => api('/api/import', { method: 'POST', body: { data } }), {
+    success: (r) => `Imported ${r.tasks} tasks, ${r.sessions} sessions and ${r.journal} journal entries`,
+  });
+  state.coach.result = null;
+  state.insights.stats = null;
+  if (state.view === 'insights') loadStats();
+}
+
+async function settingsClick(action, el) {
+  const dlg = document.getElementById('settings');
+  switch (action) {
+    case 'settings-close':
+      dlg.close();
+      return true;
+    case 'export-data':
+      await exportData();
+      return true;
+    case 'import-data':
+      dlg.querySelector('[data-ai=import-file]').click();
+      return true;
+    case 'ai-toggle-key': {
+      const input = dlg.querySelector('[data-ai=key]');
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      el.textContent = show ? 'Hide' : 'Show';
+      el.setAttribute('aria-label', show ? 'Hide key' : 'Show key');
+      return true;
+    }
+    case 'ai-test': {
+      const values = aiFormValues();
+      if (!values.key) { setAiStatus('Paste an API key first.', 'error'); return true; }
+      setAiStatus('Testing…');
+      el.disabled = true;
+      try {
+        const r = await testConnection(values);
+        setAiStatus(`Connected to ${r.label} (${r.model}). Save settings to use it.`, 'ok');
+      } catch (err) {
+        setAiStatus(err.message, 'error');
+      } finally {
+        el.disabled = false;
+      }
+      return true;
+    }
+    case 'ai-remove': {
+      dlg.close();
+      const ok = await confirmDialog('Remove your API key from this browser? The coach will switch to demo mode.', { confirmLabel: 'Remove key' });
+      if (ok) {
+        clearAiSettings();
+        await act(async () => {}, { success: 'API key removed from this browser' });
+      }
+      return true;
+    }
+    case 'settings-sample':
+    case 'settings-reset': {
+      dlg.close();
+      const sample = action === 'settings-sample';
+      const ok = await confirmDialog(sample
+        ? 'Replace all your tasks, sessions and journal entries with two weeks of sample data?'
+        : 'Delete all tasks, sessions, journal entries and plans? Export first if you want a copy. Your API key is kept.', { confirmLabel: sample ? 'Replace' : 'Delete everything' });
+      if (ok) {
+        await act(() => api(sample ? '/api/demo/seed' : '/api/demo/reset', { method: 'POST' }), { success: sample ? 'Sample week loaded' : 'All data deleted' });
+        state.coach.result = null;
+        state.insights.stats = null;
+        if (state.view === 'insights') loadStats();
+      }
+      return true;
+    }
+    default:
+      return false;
+  }
 }
 
 async function saveSettings(form) {
   const fd = new FormData(form);
+  const ai = aiFormValues();
+  const saved = getAiSettings();
+  try {
+    if (ai.key) saveAiSettings(ai);
+    else if (saved.key) clearAiSettings(); // the user emptied the field
+  } catch (err) {
+    setAiStatus(err.message, 'error');
+    return;
+  }
   const body = Object.fromEntries(['dayStart', 'availableMinutes', 'breakEveryMinutes', 'breakMinutes'].map((k) => [k, k === 'dayStart' ? fd.get(k) : Number(fd.get(k))]));
-  const ok = await act(() => api('/api/preferences', { method: 'PUT', body }), { success: 'Settings saved' });
+  const ok = await act(() => api('/api/preferences', { method: 'PUT', body }), {
+    success: () => (ai.key ? `Settings saved. The coach will use ${PROVIDERS[ai.provider].label}.` : 'Settings saved'),
+  });
   if (ok) document.getElementById('settings').close();
 }
 
@@ -240,6 +404,8 @@ document.addEventListener('visibilitychange', async () => {
 });
 
 setOnline(navigator.onLine);
+// Another open tab changed the data: pick it up.
+onExternalChange(async () => { try { await refresh(); render(); } catch { /* ignore */ } });
 boot();
 
 window.addEventListener('unhandledrejection', (e) => toast(e.reason?.message || 'Something went wrong.', { tone: 'error' }));

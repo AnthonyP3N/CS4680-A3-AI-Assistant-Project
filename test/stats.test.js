@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildSampleDb } from '../lib/seed.js';
-import { computeStats, estimateAccuracy, sessionSeconds } from '../lib/stats.js';
-import { localDate, rangeFor, zonedTimeToIso } from '../lib/dates.js';
+import { buildSampleDb } from '../public/js/lib/seed.js';
+import { computeStats, estimateAccuracy, sessionSeconds } from '../public/js/lib/stats.js';
+import { localDate, rangeFor, zonedTimeToIso } from '../public/js/lib/dates.js';
 
 const TZ = 'America/Los_Angeles';
 

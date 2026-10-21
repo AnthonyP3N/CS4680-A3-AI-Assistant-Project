@@ -4,6 +4,8 @@
 
 CS4680 Prompt Engineering, AI Assistant Project.
 
+**Live app:** `https://YOUR-USERNAME.github.io/focusflow/` (see [DEPLOY.md](DEPLOY.md) to publish your own copy)
+
 ![Today view with an accepted plan](docs/screenshots/today.png)
 
 ## The problem
@@ -32,36 +34,37 @@ FocusFlow closes it: **plan → track → reflect → understand → improve.**
 
 ## Quick start
 
-Requires Node.js 18.17 or newer.
+FocusFlow is a static web app: everything runs in the browser, so there is no server to set up and no backend bill.
 
-```bash
-git clone <your-repo-url> focusflow
-cd focusflow
-npm install
-cp .env.example .env      # then paste one API key into .env (optional)
-npm run seed              # optional: load two weeks of sample data
-npm start                 # http://localhost:3000
-```
+- **Use it online:** open the published GitHub Pages link above. To publish your own copy, follow [DEPLOY.md](DEPLOY.md).
+- **Run it on your computer** (Node.js 18.17 or newer):
 
-### Choosing an AI provider
+  ```bash
+  npm install
+  npm start          # http://localhost:3000
+  ```
 
-Put **one** key in `.env`. FocusFlow uses the first provider it finds, or the one named in `AI_PROVIDER`.
+To try it with realistic data, click **Load a sample week instead** on the empty Today page, or use **Settings → Replace with sample week**.
 
-| Provider | Key variable | Default model | Notes |
+### Bring your own AI key
+
+Each person uses their own key, so nobody is billed for anyone else's usage. Open **Settings**, choose a provider, paste a key, click **Test connection**, then **Save settings**.
+
+| Provider | Get a key | Default model | Cost |
 |---|---|---|---|
-| Google Gemini | `GEMINI_API_KEY` | `gemini-flash-latest` | Free tier, good default for students |
-| OpenAI | `OPENAI_API_KEY` | `gpt-5-mini` | Uses JSON mode |
-| Anthropic Claude | `ANTHROPIC_API_KEY` | `claude-haiku-5-5` | |
+| Google Gemini | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | `gemini-flash-latest` | Free tier available |
+| OpenAI | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) | `gpt-5-mini` | Pay as you go |
+| Anthropic Claude | [console.anthropic.com](https://console.anthropic.com/settings/keys) | `claude-haiku-5-5` | Pay as you go |
 
-Model names change often. If you see "model may be wrong", set `GEMINI_MODEL`, `OPENAI_MODEL` or `ANTHROPIC_MODEL` to a current model from your provider's docs. No SDKs are used; each provider is a small `fetch` adapter in `lib/providers.js`.
+The key is saved only in that browser (localStorage), sent directly from the browser to the chosen provider, and never included in data exports. **Remove key** deletes it. Model names change often; if a provider says the model wasn't found, type a current one into **Model (optional)**. No SDKs are used; each provider is a small `fetch` adapter in `public/js/lib/providers.js`.
 
-**Demo mode.** Without a key, the coach runs offline rules that return the same JSON shapes and go through the same validators. The UI labels this clearly as *not* an AI model. It exists so a live demo never fails because of Wi-Fi or a quota. Use a real key for the graded demo.
+**Demo mode.** Without a key, the coach runs offline rules that return the same JSON shapes and go through the same validators. The UI labels this clearly as *not* an AI model. It lets anyone click through the whole app, and it keeps a live demo working if the Wi-Fi fails.
 
 ## Prompt engineering
 
-The core design rule: **the model handles judgment and language; code handles facts and arithmetic.** Every number the AI sees is computed in `lib/stats.js`, and every answer it gives is checked in `lib/validate.js`.
+The core design rule: **the model handles judgment and language; code handles facts and arithmetic.** Every number the AI sees is computed in `stats.js`, and every answer it gives is checked in `validate.js` (both in `public/js/lib/`).
 
-### 1. Persona (`lib/prompts.js`, `PERSONA`)
+### 1. Persona (`public/js/lib/prompts.js`, `PERSONA`)
 
 All three actions share one system prompt that defines *FocusFlow Coach*: calm, practical, realistic over ambitious. The persona also carries the boundaries:
 
@@ -82,7 +85,7 @@ Each request is sent as a short conversation: the rules and schema, a **complete
 
 The test suite proves each example passes the same validators the model must pass (`test/validate.test.js`), so the examples never teach a rule violation.
 
-### 3. Iterative refinement (`lib/ai.js`, `runWithRefinement`)
+### 3. Iterative refinement (`public/js/lib/ai.js`, `runWithRefinement`)
 
 ```
 draft → validate in code → problems?  ── no ──→ show to user
@@ -122,27 +125,35 @@ The UI shows this as **"How this was checked"** on every result, so users (and g
 - **"What the coach saw"** shows the exact JSON sent with each request.
 - Journal text is sent only on explicit opt-in, capped at 12 entries × 400 characters.
 - User free text is length-limited and passed as data inside the JSON input.
-- Per-hour call quota, timeouts, one retry on rate limits and server errors, and readable error messages.
-- Each AI request logs provider, rounds, latency and pass/fail as one JSON line; `GET /api/health` shows counters including token usage.
+- Timeouts, one retry on rate limits and server errors, and readable error messages (bad key, unknown model, quota).
+- Each AI request logs provider, rounds, latency and pass/fail as one line in the browser console.
 
 ## How it is built
 
 ```
-public/            Vanilla JS front end, no build step
-  js/views/        today, focus, journal, insights, coach
-lib/
-  stats.js         All dashboard math (deterministic)
-  prompts.js       Persona, few-shot examples, refinement message
-  validate.js      Output checks, plan repair, grounding check
-  ai.js            Input building, refinement loop, quotas, metrics
-  providers.js     Gemini / OpenAI / Anthropic adapters (fetch only)
-  demoAI.js        Offline demo-mode rules
-  store.js         JSON-file storage with atomic, all-or-nothing writes
-server.js          Express API
-test/              18 tests: stats, validators, refinement loop with a fake LLM
+public/                  The whole app. GitHub Pages publishes this folder.
+  index.html, styles.css
+  js/
+    app.js               Routing, settings, import/export
+    api.js               The views' request function
+    backend.js           The app's "server", running in the browser:
+                         same routes as a REST API, data in localStorage
+    views/               today, focus, journal, insights, coach
+    lib/
+      stats.js           All dashboard math (deterministic)
+      prompts.js         Persona, few-shot examples, refinement message
+      validate.js        Output checks, plan repair, grounding check
+      ai.js              Input building, refinement loop, metrics
+      providers.js       Gemini / OpenAI / Anthropic adapters (fetch only)
+      demoAI.js          Offline demo-mode rules
+      db.js, seed.js     Data shape and sample data
+server.js                Local preview server for npm start (static files only)
+test/                    23 tests: stats, validators, refinement loop with a
+                         fake LLM, and the in-browser backend
+.github/workflows/       Tests, then publishes public/ to GitHub Pages
 ```
 
-Data is stored in `data/focusflow.json`. It is a single-user local app; authentication is out of scope for the MVP.
+The views call routes like `POST /api/tasks` through `backend.js`, which keeps the app structured like a client and server even though both run in the browser. Saves are all-or-nothing: if a change fails validation, nothing is written. Several open tabs stay in sync.
 
 **Metrics, defined:**
 
@@ -154,18 +165,16 @@ Data is stored in `data/focusflow.json`. It is a single-user local app; authenti
 
 | Command | What it does |
 |---|---|
-| `npm start` | Run the app on port 3000 |
-| `npm run dev` | Run with auto-restart on file changes |
-| `npm run seed` | Replace data with two sample weeks (stop the server first) |
-| `npm run reset` | Start with an empty database |
+| `npm start` | Serve the app at http://localhost:3000 |
+| `npm run dev` | Same, restarting on file changes |
 | `npm test` | Run the test suite |
 
-You can also load or clear sample data from **Settings** while the app is running.
+Your data lives in your browser. **Settings → Export my data** downloads a backup file and **Import a backup** restores it, on any browser or computer.
 
 ## Roadmap
 
-Recurring tasks and reminders, calendar import/export, monthly trend reports, an offline-first mobile timer, optional energy tracking, and user-selectable coaching styles (a natural extension of the persona pattern).
+Optional sync across devices, recurring tasks and reminders, calendar import/export, monthly trend reports, an offline-first mobile timer, optional energy tracking, and user-selectable coaching styles (a natural extension of the persona pattern).
 
 ## Presenting
 
-See [DEMO.md](DEMO.md) for the two-minute live demo script and the short-video storyboard.
+See [DEMO.md](DEMO.md) for the live demo script and the short-video storyboard, and [DEPLOY.md](DEPLOY.md) for publishing.

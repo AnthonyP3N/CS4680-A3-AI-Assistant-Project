@@ -575,3 +575,16 @@ fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
 @media (forced-colors: active) {
   .ledger-track .ledger-act, .bar-chart .bar, .hbar-fill, .ledger-mini .ledger-act { forced-color-adjust: none; background: CanvasText; fill: CanvasText; }
 }
+
+/* --------------------------------------------------------- AI settings */
+
+.dialog { max-height: calc(100dvh - 32px); overflow: auto; }
+.dialog fieldset + fieldset { border-top: 1px solid var(--rule); padding-top: 16px; }
+.key-row { display: flex; gap: 8px; }
+.key-row input { font-family: var(--mono); font-size: .9rem; }
+.key-note { display: flex; gap: 10px; padding: 10px 12px; border-radius: var(--r-sm); background: var(--paper); font-size: .85rem; color: var(--ink-2); }
+.key-note svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; margin-top: 2px; }
+.ai-status:empty { display: none; }
+.ai-status[data-tone="ok"] { color: var(--act); font-weight: 700; }
+.ai-status[data-tone="error"] { color: var(--danger); font-weight: 700; }
+.provider-line .link-btn, .provider .link-btn { font-size: inherit; }

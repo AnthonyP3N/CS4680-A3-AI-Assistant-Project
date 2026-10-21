@@ -49,14 +49,14 @@ export function renderJournal() {
         </form>
         <p class="privacy">
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
-          Entries stay on this device’s FocusFlow server. The coach only reads them if you tick “Include my journal” when asking for a review. Tags are counted on Insights; your words are not.
+          Entries are saved only in this browser. The coach only reads them if you tick “Include my journal” when asking for a review. Tags are counted on Insights; your words are not.
         </p>
       </section>
 
       <section class="entries" aria-labelledby="entries-h">
         <div class="panel-head">
           <h2 id="entries-h">Entries</h2>
-          ${entries.length ? '<a class="link-btn" href="/api/export" download>Export all data</a>' : ''}
+          ${entries.length ? '<button type="button" class="link-btn" data-action="export-data">Export my data</button>' : ''}
         </div>
         ${entries.length ? [...groups.entries()].map(([date, list]) => `
           <div class="entry-day">

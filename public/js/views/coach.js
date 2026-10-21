@@ -34,11 +34,11 @@ function planForm() {
       </div>
     </fieldset>
     <div class="field-row">
-      <label class="field"><span>Start at</span><input type="time" name="dayStart" value="${esc(defaultStart(date))}" required></label>
-      <label class="field"><span>Time available (min)</span><input type="number" name="availableMinutes" min="15" max="960" step="15" value="${p.availableMinutes}" required></label>
+      <label class="field"><span>Start at</span><input type="time" name="dayStart" value="${esc(c.planForm?.date === date ? c.planForm.dayStart : defaultStart(date))}" required></label>
+      <label class="field"><span>Time available (min)</span><input type="number" name="availableMinutes" min="15" max="960" step="15" value="${esc(c.planForm?.availableMinutes || p.availableMinutes)}" required></label>
     </div>
     <label class="field field-wide"><span>Anything to plan around? (optional)</span>
-      <input name="userNote" maxlength="300" placeholder="e.g. Club meeting 4:00 to 4:30, low energy after work"></label>
+      <input name="userNote" maxlength="300" value="${esc(c.planForm?.userNote || '')}" placeholder="e.g. Club meeting 4:00 to 4:30, low energy after work"></label>
     <p class="muted small">The coach sees your ${open.length} open ${open.length === 1 ? 'task' : 'tasks'} with deadlines, estimates and tracked time, plus your recent totals. Breaks follow your settings: ${p.breakMinutes} min every ${p.breakEveryMinutes} min.</p>
     <button class="btn btn-primary" ${open.length ? '' : 'disabled'}>${c.loading ? 'Drafting…' : 'Draft a plan'}</button>
     ${open.length ? '' : '<p class="muted small">Add a task first.</p>'}
@@ -60,7 +60,7 @@ function reviewForm() {
     </fieldset>
     <label class="checkline consent">
       <input type="checkbox" name="includeJournal" ${c.includeJournal ? 'checked' : ''}>
-      <span><strong>Include my journal</strong><br><span class="muted">Sends up to 12 entries from this period (first 400 characters each) so the coach can mention themes. Off by default.</span></span>
+      <span><strong>Include my journal</strong><br><span class="muted">Sends up to 12 entries from this period (first 400 characters each) to your AI provider with this one request, so the coach can mention themes. Off by default.</span></span>
     </label>
     <button class="btn btn-primary">${c.loading ? 'Reviewing…' : 'Write my review'}</button>
   </form>`;
@@ -83,7 +83,7 @@ function breakdownForm() {
 function providerNote(rev) {
   const p = rev?.provider || state.boot.provider;
   if (p.name === 'demo' || p.demo) {
-    return '<p class="provider provider-demo"><strong>Demo mode.</strong> This was produced by FocusFlow’s offline rules, not a language model. Add an API key in <code>.env</code> to use the AI coach.</p>';
+    return '<p class="provider provider-demo"><strong>Demo mode.</strong> This was produced by FocusFlow’s offline rules, not a language model. <button type="button" class="link-btn" data-action="open-settings">Add your own API key</button> to use the AI coach.</p>';
   }
   return `<p class="provider">Written by ${esc(p.label)} (${esc(p.model)}), checked by FocusFlow.</p>`;
 }
@@ -293,7 +293,9 @@ export function renderCoach() {
         <section class="panel">
           ${c.mode === 'plan' ? planForm() : c.mode === 'review' ? reviewForm() : breakdownForm()}
         </section>
-        <p class="provider-line">${p.demo ? '<span class="dot dot-demo" aria-hidden="true"></span>Demo mode (no API key)' : `<span class="dot" aria-hidden="true"></span>${esc(p.label)}: ${esc(p.model)}`}</p>
+        <p class="provider-line">${p.demo
+          ? '<span class="dot dot-demo" aria-hidden="true"></span>Demo mode, no API key. <button type="button" class="link-btn" data-action="open-settings">Add your key</button>'
+          : `<span class="dot" aria-hidden="true"></span>${esc(p.label)}: ${esc(p.model)} <button type="button" class="link-btn" data-action="open-settings">Change</button>`}</p>
       </div>
       <div class="coach-main" aria-live="polite">${result}</div>
       <div class="coach-extra">
@@ -409,15 +411,18 @@ export const coachHandlers = {
     const c = state.coach;
     const fd = new FormData(form);
     switch (name) {
-      case 'ai-plan':
+      case 'ai-plan': {
         c.planDate = fd.get('date');
-        await runAI('/api/ai/plan', {
+        // Remembered so the form still shows what was asked for after it re-renders.
+        c.planForm = {
           date: fd.get('date'),
           dayStart: fd.get('dayStart'),
           availableMinutes: Number(fd.get('availableMinutes')),
           userNote: fd.get('userNote') || '',
-        });
+        };
+        await runAI('/api/ai/plan', c.planForm);
         return true;
+      }
       case 'ai-review': {
         c.reviewChoice = fd.get('period');
         c.includeJournal = fd.get('includeJournal') === 'on';

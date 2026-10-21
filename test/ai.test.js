@@ -2,10 +2,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildSampleDb } from '../lib/seed.js';
-import { generatePlan, generateReview } from '../lib/ai.js';
-import { resolveProvider } from '../lib/providers.js';
-import { validatePlan } from '../lib/validate.js';
+import { buildSampleDb } from '../public/js/lib/seed.js';
+import { generatePlan, generateReview } from '../public/js/lib/ai.js';
+import { resolveProvider } from '../public/js/lib/providers.js';
+import { validatePlan } from '../public/js/lib/validate.js';
 
 const TODAY = '2026-10-21';
 const realFetch = globalThis.fetch;
@@ -26,20 +26,18 @@ function fakeGemini(replies) {
   return requests;
 }
 
-test.beforeEach(() => {
-  process.env.AI_PROVIDER = 'gemini';
-  process.env.GEMINI_API_KEY = 'test-key';
-});
+// The visitor's own key, as it would come from Settings.
+const GEMINI = resolveProvider({ provider: 'gemini', key: 'test-key' });
+
 test.afterEach(() => {
   globalThis.fetch = realFetch;
-  delete process.env.AI_PROVIDER;
-  delete process.env.GEMINI_API_KEY;
 });
 
 test('provider falls back to demo mode without a key', () => {
   assert.equal(resolveProvider({}).name, 'demo');
-  assert.equal(resolveProvider({ OPENAI_API_KEY: 'k' }).name, 'openai');
-  assert.equal(resolveProvider({ AI_PROVIDER: 'anthropic', ANTHROPIC_API_KEY: 'k', GEMINI_API_KEY: 'g' }).name, 'anthropic');
+  assert.equal(resolveProvider({ provider: 'openai', key: '  ' }).name, 'demo');
+  assert.equal(resolveProvider({ provider: 'openai', key: 'k' }).model, 'gpt-5-mini');
+  assert.equal(resolveProvider({ provider: 'anthropic', key: 'k', model: 'my-model' }).model, 'my-model');
 });
 
 test('an overbooked draft is sent back with the exact problems, then the revision is accepted', async () => {
@@ -70,7 +68,7 @@ test('an overbooked draft is sent back with the exact problems, then the revisio
   };
   const requests = fakeGemini([overbooked, good]);
 
-  const result = await generatePlan(db, { date: TODAY, dayStart: '14:00', availableMinutes: 180 });
+  const result = await generatePlan(db, { date: TODAY, dayStart: '14:00', availableMinutes: 180 }, GEMINI);
 
   assert.equal(requests.length, 2);
   assert.equal(result.attempts.length, 2);
@@ -96,7 +94,7 @@ test('if the model keeps failing, code repairs the plan and says so', async () =
     schedule: [{ type: 'task', taskId: hw.id, title: hw.title, start: '14:00', durationMinutes: 240, reason: 'All of it' }],
   }]);
   const input = { date: TODAY, dayStart: '14:00', availableMinutes: 120 };
-  const result = await generatePlan(db, input);
+  const result = await generatePlan(db, input, GEMINI);
   assert.equal(requests.length, 3); // draft + 2 revisions
   assert.equal(result.attempts.at(-1).step, 'Safety fallback');
   assert.deepEqual(validatePlan(result.output, result.input), []);
@@ -113,7 +111,7 @@ test('non-JSON replies count as a failed check, not a crash', async () => {
     journalThemes: [],
     warnings: [],
   }))]);
-  const result = await generateReview(db, { range: 'week', date: '2026-10-14', includeJournal: false });
+  const result = await generateReview(db, { range: 'week', date: '2026-10-14', includeJournal: false }, GEMINI);
   assert.equal(result.attempts[0].passed, false);
   assert.match(result.attempts[0].problems[0], /not valid JSON/);
   assert.equal(result.attempts[1].passed, true);
@@ -123,7 +121,7 @@ test('non-JSON replies count as a failed check, not a crash', async () => {
 test('journal text is only included when the user opts in', async () => {
   const db = buildSampleDb('America/Los_Angeles', TODAY);
   const requests = fakeGemini([{ summary: 's', patterns: [{ observation: 'o', evidence: 'e' }], suggestions: [{ action: 'a' }, { action: 'b' }], journalThemes: ['t'] }]);
-  await generateReview(db, { range: 'week', date: '2026-10-14', includeJournal: true });
+  await generateReview(db, { range: 'week', date: '2026-10-14', includeJournal: true }, GEMINI);
   const sent = requests[0].contents.at(-1).parts[0].text;
   assert.match(sent, /Prompt lab went well/);
 });
@@ -132,6 +130,6 @@ test('upstream auth errors are reported clearly and not retried', async () => {
   const db = buildSampleDb('America/Los_Angeles', TODAY);
   let calls = 0;
   globalThis.fetch = async () => { calls++; return new Response(JSON.stringify({ error: { message: 'API key not valid' } }), { status: 400 }); };
-  await assert.rejects(generatePlan(db, { date: TODAY }), /AI service error 400: API key not valid/);
+  await assert.rejects(generatePlan(db, { date: TODAY }, GEMINI), /AI service error 400: API key not valid/);
   assert.equal(calls, 1);
 });

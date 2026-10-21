@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "preferences": {
+    "timezone": "America/Los_Angeles",
+    "dayStart": "09:00",
+    "availableMinutes": 180,
+    "breakEveryMinutes": 45,
+    "breakMinutes": 10
+  },
+  "categories": [
+    "Homework",
+    "Study",
+    "Work",
+    "Personal",
+    "Health"
+  ],
+  "tasks": [],
+  "sessions": [],
+  "journal": [],
+  "plans": [],
+  "schedules": {}
+}

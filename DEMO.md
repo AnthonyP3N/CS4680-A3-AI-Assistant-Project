@@ -2,11 +2,11 @@
 
 ## Before you present
 
-- [ ] `.env` has a working API key. Open **Coach**; the line under the form should name your provider, not "Demo mode".
+- [ ] Open the published site in the browser you'll present from. In **Settings**, paste your key, click **Test connection**, then **Save settings**. The line under the Coach form should name your provider, not "Demo mode".
 - [ ] Run one plan request beforehand so you know the key and model work.
-- [ ] Load the sample weeks: **Settings → Replace with sample week** (or `npm run seed` with the server stopped).
+- [ ] Load the sample weeks: **Settings → Replace with sample week**.
 - [ ] Browser zoom at 110–125% so the room can read it. Close other tabs.
-- [ ] Backup: if the network fails, remove the key from `.env` and restart. Demo mode still shows the whole flow and is clearly labeled.
+- [ ] Backup: if the network fails, click **Remove key** in Settings. Demo mode still shows the whole flow, clearly labeled, and everything else works offline.
 
 ## Live demo script (about 4 minutes)
 
@@ -21,13 +21,14 @@
 | 2:05 | Click **Review this week with Coach**, tick *Include my journal*, **Write my review**. | "The review must cite numbers from my data as evidence, and give exactly two things to try." |
 | 2:35 | Open **How this was checked** and **What the coach saw**. | "This is the iterative-refinement loop: code checks the draft and sends specific problems back. And this is the exact data the model received." |
 | 3:00 | **Plan tomorrow with this in mind → Draft a plan**. Uncheck a block, change a duration, watch the budget line, then **Add blocks**. | "Persona and few-shot examples teach it to fit the time budget, add breaks, and say what didn't fit. I stay in control: nothing changes until I accept." |
-| 3:30 | Show the plan on **Today**. | "Next: recurring tasks, calendar import, and coaching styles. Questions?" |
+| 3:30 | Show the plan on **Today**, then the published URL. | "It's live on GitHub Pages. Everyone brings their own key, stored only in their browser, so it's free to run. Next: sync across devices, recurring tasks, and coaching styles. Questions?" |
 
 ### If someone asks…
 
 - **"How do you stop hallucinated numbers?"** The review validator extracts every number in the answer and rejects any that don't appear in the input data (unit conversions allowed). Failures go back to the model.
 - **"What if the model never gets it right?"** After two revisions, plans are re-packed by code to fit the window, with a visible warning. Reviews keep their content but list what couldn't be verified.
-- **"Which prompt patterns?"** Persona (shared system prompt), few-shot (a worked example before each request), iterative refinement (validate → revise up to twice). See `lib/prompts.js` and `lib/ai.js`.
+- **"Which prompt patterns?"** Persona (shared system prompt), few-shot (a worked example before each request), iterative refinement (validate → revise up to twice). See `public/js/lib/prompts.js` and `public/js/lib/ai.js`.
+- **"Where does my key go?"** Only into this browser's storage and directly to the provider. There's no FocusFlow server, and exports leave the key out.
 
 ## Short video (under 2 minutes, vertical)
 

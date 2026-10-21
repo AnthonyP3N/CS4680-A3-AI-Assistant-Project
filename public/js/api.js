@@ -1,4 +1,7 @@
-// Small fetch wrapper with readable errors.
+// The views call api('/api/...') exactly as they did when FocusFlow had an
+// Express server. Requests are now handled in the browser by backend.js.
+
+import { handle } from './backend.js';
 
 export class ApiError extends Error {
   constructor(message, status) {
@@ -8,19 +11,10 @@ export class ApiError extends Error {
 }
 
 export async function api(path, { method = 'GET', body } = {}) {
-  let res;
   try {
-    res = await fetch(path, {
-      method,
-      headers: body !== undefined ? { 'content-type': 'application/json' } : {},
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
-  } catch {
-    throw new ApiError('Can’t reach FocusFlow. Check that the server is running and you’re online.', 0);
+    return await handle(method, path, body);
+  } catch (err) {
+    if (!err.status || err.status >= 500) console.error(err);
+    throw new ApiError(err.message || 'Something went wrong.', err.status || 500);
   }
-  if (res.status === 204) return null;
-  let data = null;
-  try { data = await res.json(); } catch { /* empty body */ }
-  if (!res.ok) throw new ApiError(data?.error || `Request failed (${res.status}).`, res.status);
-  return data;
 }

@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { EXAMPLES } from '../lib/prompts.js';
+import { EXAMPLES } from '../public/js/lib/prompts.js';
 import {
   normalizeBreakdown, normalizePlan, normalizeReview, repairPlan, ungroundedNumbers,
   validateBreakdown, validatePlan, validateReview,
-} from '../lib/validate.js';
+} from '../public/js/lib/validate.js';
 
 const ctx = EXAMPLES.plan.input;
 
