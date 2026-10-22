@@ -40,3 +40,13 @@ test('only the first of each kind is used; the rest stays in the title', () => {
 test('no title when only tokens are typed', () => {
   assert.equal(parseQuickAdd('45m today', WED).title, '');
 });
+
+test('#tag matches built-in and custom categories, or creates a new one', () => {
+  const today = '2026-10-21';
+  assert.equal(parseQuickAdd('Read ch 5 #study', today).category, 'Studying');
+  assert.equal(parseQuickAdd('Pay rent #BILLS', today).category, 'Bills');
+  assert.equal(parseQuickAdd('Budget #fin', today).category, 'Finances');
+  assert.equal(parseQuickAdd('Water plants #garden', today).category, 'Garden');
+  assert.equal(parseQuickAdd('Chord drills #guitar', today, ['Guitar practice', 'Work']).category, 'Guitar practice');
+  assert.equal(parseQuickAdd('Call mom #family-time', today).category, 'Family time');
+});

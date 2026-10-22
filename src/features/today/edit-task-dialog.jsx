@@ -4,11 +4,13 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogD
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CategoryPicker } from '@/components/category-picker';
 import { api } from '@/data/api';
+import { DUE_MAX, DUE_MIN } from '@/lib/inputs';
 import { useApp } from '@/state/app';
 
 export function EditTaskDialog({ task, onClose }) {
-  const { boot, mutate } = useApp();
+  const { mutate } = useApp();
   const [form, setForm] = useState(null);
 
   useEffect(() => {
@@ -34,7 +36,7 @@ export function EditTaskDialog({ task, onClose }) {
           <form onSubmit={save} className="grid grid-cols-2 gap-3">
             <div className="col-span-2 flex flex-col gap-1.5"><Label htmlFor="et-title">Title</Label><Input id="et-title" required maxLength={120} value={form.title} onChange={set('title')} /></div>
             <div className="flex flex-col gap-1.5"><Label htmlFor="et-est">Estimate (min)</Label><Input id="et-est" type="number" min={5} max={1440} step={5} value={form.estimateMinutes} onChange={set('estimateMinutes')} /></div>
-            <div className="flex flex-col gap-1.5"><Label htmlFor="et-due">Due</Label><Input id="et-due" type="date" value={form.dueDate} onChange={set('dueDate')} /></div>
+            <div className="flex flex-col gap-1.5"><Label htmlFor="et-due">Due</Label><Input id="et-due" type="date" min={DUE_MIN} max={DUE_MAX} value={form.dueDate} onChange={set('dueDate')} /></div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="et-prio">Priority</Label>
               <Select value={form.priority} onValueChange={(v) => setForm((f) => ({ ...f, priority: v }))}>
@@ -42,7 +44,7 @@ export function EditTaskDialog({ task, onClose }) {
                 <SelectContent><SelectItem value="high">High</SelectItem><SelectItem value="medium">Normal</SelectItem><SelectItem value="low">Low</SelectItem></SelectContent>
               </Select>
             </div>
-            <div className="flex flex-col gap-1.5"><Label htmlFor="et-cat">Category</Label><Input id="et-cat" list="et-cats" maxLength={30} value={form.category} onChange={set('category')} /><datalist id="et-cats">{boot.categories.map((c) => <option key={c} value={c} />)}</datalist></div>
+            <div className="flex flex-col gap-1.5"><Label htmlFor="et-cat">Category</Label><CategoryPicker id="et-cat" value={form.category} onChange={(c) => setForm((f) => ({ ...f, category: c }))} /></div>
             <div className="col-span-2 flex flex-col gap-1.5"><Label htmlFor="et-notes">Notes</Label><Input id="et-notes" maxLength={1000} value={form.notes} onChange={set('notes')} /></div>
             <DialogFooter className="col-span-2 mt-2">
               <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>

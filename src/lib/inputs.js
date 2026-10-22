@@ -1,6 +1,11 @@
 // Validation for data coming from the browser. Returns { value } or { error }.
 
 import { isDateStr, isValidTimeZone, timeToMinutes } from './dates.js';
+import { CATEGORY_MAX_CHARS, cleanCategory } from './categories.js';
+
+// Due dates outside this range are almost always a typo in the year.
+export const DUE_MIN = '2000-01-01';
+export const DUE_MAX = '2099-12-31';
 
 export const PRIORITIES = ['low', 'medium', 'high'];
 export const STATUSES = ['todo', 'in_progress', 'done'];
@@ -34,9 +39,9 @@ export function validateTask(body = {}, { partial = false } = {}) {
     out.title = title;
   }
   if (!partial || has('category')) {
-    const c = str(body.category) || 'Other';
-    if (typeof c !== 'string' || c.length > 30) return { error: 'Category must be 30 characters or fewer.' };
-    out.category = c;
+    if (body.category != null && typeof body.category !== 'string') return { error: 'Category must be text.' };
+    if (typeof body.category === 'string' && body.category.trim().length > CATEGORY_MAX_CHARS) return { error: `Category must be ${CATEGORY_MAX_CHARS} characters or fewer.` };
+    out.category = cleanCategory(body.category) || 'Other';
   }
   if (!partial || has('priority')) {
     const p = body.priority || 'medium';
@@ -46,6 +51,7 @@ export function validateTask(body = {}, { partial = false } = {}) {
   if (!partial || has('dueDate')) {
     const d = body.dueDate || null;
     if (d !== null && !isDateStr(d)) return { error: 'Due date must be a valid date.' };
+    if (d !== null && (d < DUE_MIN || d > DUE_MAX)) return { error: `Check the year: due dates must be between ${DUE_MIN.slice(0, 4)} and ${DUE_MAX.slice(0, 4)}.` };
     out.dueDate = d;
   }
   if (!partial || has('estimateMinutes')) {

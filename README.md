@@ -24,7 +24,7 @@ FocusFlow closes it: **plan → track → reflect → understand → improve.**
 
 | Page | What it does |
 |---|---|
-| **Today** | Quick add that understands `45m`, `2h`, `today`/`fri`, `high`/`low` and `#category`, with a live preview of what it understood. Tasks grouped into Overdue, Due today, This week and Later. **Plan the rest of my day** sends your open tasks to the AI and shows a timeline you accept block by block. **Split into steps** breaks a big task into subtasks. |
+| **Today** | Quick add that understands `45m`, `2h`, `today`/`fri`, `high`/`low` and `#category`, with a live preview of what it understood. A category picker with a built-in list (Studying, Homework, Work, Exercise, Health, Personal, Errands, Chores, Bills, Finances, Social, Other) where you can search or create your own; `#study` or `#bills` in quick add matches them too. Tasks grouped into Overdue, Due today, This week and Later. **Plan the rest of my day** sends your open tasks to the AI and shows a timeline you accept block by block. **Split into steps** breaks a big task into subtasks. |
 | **Focus** | Start, pause, resume, stop. The timer survives refresh (time comes from timestamps) and shows in the header and tab title on every page. Log time by hand if you forgot to start it. |
 | **Journal** | Prompts to get started, energy (low / OK / high) and tags (win, stuck, distraction, idea), an autosaved draft, a full-screen writing mode, word count, search with highlighted excerpts, filters, and inline editing. Entries up to 10,000 characters (about 1,500 words); long ones fold to a preview. |
 | **Insights** | Day, week and month: focused time, completion rate and estimate accuracy (with change from the last period), a day-by-day chart with a table view, time by category, and an estimate-versus-reality ledger. **Write my review** asks the AI for patterns and two suggestions you can add as tasks. |
@@ -169,9 +169,10 @@ src/
     providers.js           Gemini / OpenAI / Anthropic adapters (fetch only)
     demoAI.js              Demo-mode rules
     quickadd.js            Parses "Lab report 90m fri high #physics"
+    categories.js          Built-in categories, matching and clean-up
     inputs.js, text.js     Input limits and journal word counts
     db.js, seed.js         Data shape, upgrades and sample data
-test/                      35 tests: stats, validators, refinement loop with a
+test/                      41 tests: stats, validators, refinement loop with a
                            fake model, quick add, journal limits, the backend
 .github/workflows/         Tests, builds, then publishes dist/ to GitHub Pages
 ```
@@ -194,7 +195,7 @@ npm run dev        # http://localhost:5173, reloads as you edit
 | Command | What it does |
 |---|---|
 | `npm run dev` | Development server at http://localhost:5173 |
-| `npm test` | Run the 35 tests |
+| `npm test` | Run the 41 tests |
 | `npm run build` | Build the site into `dist/` |
 | `npm run preview` | Serve the built `dist/` to check it before publishing |
 

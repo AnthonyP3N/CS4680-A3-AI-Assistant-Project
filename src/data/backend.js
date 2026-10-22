@@ -236,7 +236,7 @@ route('POST', '/api/tasks', (p, body) => {
   const task = { id: newId('task'), ...value, parentId: value.parentId || null, createdAt: now(), completedAt: null };
   store.update((db) => {
     db.tasks.push(task);
-    if (task.category && !db.categories.includes(task.category)) db.categories.push(task.category);
+    if (task.category && !db.categories.some((c) => c.toLowerCase() === task.category.toLowerCase())) db.categories.push(task.category);
   });
   return task;
 });
@@ -248,7 +248,7 @@ route('PATCH', '/api/tasks/:id', (p, body) => {
     const t = findOr404(db.tasks, p.id, 'Task');
     if (value.status && value.status !== t.status) t.completedAt = value.status === 'done' ? now() : null;
     Object.assign(t, value, { updatedAt: now() });
-    if (t.category && !db.categories.includes(t.category)) db.categories.push(t.category);
+    if (t.category && !db.categories.some((c) => c.toLowerCase() === t.category.toLowerCase())) db.categories.push(t.category);
     return t;
   });
 });

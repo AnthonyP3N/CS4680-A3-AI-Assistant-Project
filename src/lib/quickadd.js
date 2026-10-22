@@ -2,6 +2,7 @@
 // Pure function: tested in test/quickadd.test.js, used by the Today page.
 
 import { addDays, weekdayIndex } from './dates.js';
+import { DEFAULT_CATEGORIES, cleanCategory, matchCategory } from './categories.js';
 
 const DAYS = {
   mon: 0, monday: 0, tue: 1, tues: 1, tuesday: 1, wed: 2, weds: 2, wednesday: 2,
@@ -29,9 +30,10 @@ function parseDuration(word) {
 
 /**
  * Returns { title, estimateMinutes, dueDate, dueText, priority, category, tokens }.
- * `tokens` lists what each recognised word became, for the preview chips.
+ * `#tag` matches a known category when it can ("#study" → Studying),
+ * otherwise it becomes a new one. `categories` defaults to the built-in list.
  */
-export function parseQuickAdd(text, today) {
+export function parseQuickAdd(text, today, categories = DEFAULT_CATEGORIES) {
   const out = { title: '', estimateMinutes: null, dueDate: null, dueText: null, priority: null, category: null };
   const rest = [];
   for (const raw of String(text || '').trim().split(/\s+/).filter(Boolean)) {
@@ -55,8 +57,8 @@ export function parseQuickAdd(text, today) {
       if (['med', 'medium', '!med'].includes(w)) { out.priority = 'medium'; continue; }
     }
     if (!out.category && w.startsWith('#') && w.length > 1) {
-      const c = raw.slice(1);
-      out.category = c.charAt(0).toUpperCase() + c.slice(1);
+      const c = raw.slice(1).replace(/[-_]+/g, ' ');
+      out.category = matchCategory(c, categories) || cleanCategory(c);
       continue;
     }
     rest.push(raw);

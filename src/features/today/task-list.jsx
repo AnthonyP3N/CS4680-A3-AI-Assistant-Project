@@ -11,6 +11,7 @@ import { addDays, diffDays } from '@/lib/dates';
 import { dueLabel, fmtMinutes } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/state/app';
+import { CategoryIcon } from '@/components/category-picker';
 import { SplitPanel } from './split-panel';
 import { EditTaskDialog } from './edit-task-dialog';
 
@@ -64,7 +65,7 @@ function TaskRow({ task, depth = 0, childCount = 0 }) {
           <div className={cn('font-bold break-words', done && 'text-muted-foreground line-through')}>{task.title}</div>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
             {task.priority === 'high' && !done && <span className="font-bold text-foreground">High priority</span>}
-            {task.category && <Badge variant="secondary" className="font-medium">{task.category}</Badge>}
+            {task.category && <Badge variant="secondary" className="gap-1 font-medium"><CategoryIcon name={task.category} className="size-3.5" />{task.category}</Badge>}
             {!done && <span className={cn(overdue && 'font-bold text-destructive', task.dueDate === boot.today && 'font-bold text-foreground')}>{due}</span>}
             <span>{time}</span>
             {active && <Badge variant="warn" className="bg-hl text-[#1d2b3a]">Timer running</Badge>}

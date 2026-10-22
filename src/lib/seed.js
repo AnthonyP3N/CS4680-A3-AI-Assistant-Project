@@ -38,7 +38,7 @@ export function buildSampleDb(tz = 'America/Los_Angeles', today) {
   const calc5 = task({ title: 'Calculus problem set 5', priority: 'high', dueDate: addDays(today, -10), estimateMinutes: 90 });
   session(calc5, -11, '21:10', 50); session(calc5, -10, '17:00', 55); done(calc5, -10, '17:00');
 
-  const os4 = task({ title: 'Read Ch. 4 – Operating Systems', category: 'Study', dueDate: addDays(today, -9), estimateMinutes: 60 });
+  const os4 = task({ title: 'Read Ch. 4 – Operating Systems', category: 'Studying', dueDate: addDays(today, -9), estimateMinutes: 60 });
   session(os4, -9, '10:45', 45); done(os4, -9, '10:45');
 
   const outline = task({ title: 'English essay outline', priority: 'high', dueDate: addDays(today, -8), estimateMinutes: 45 });
@@ -50,27 +50,27 @@ export function buildSampleDb(tz = 'America/Los_Angeles', today) {
   const lab = task({ title: 'CS4680 prompt lab', priority: 'high', dueDate: addDays(today, -6), estimateMinutes: 120 });
   session(lab, -7, '15:00', 60); session(lab, -7, '21:00', 50); session(lab, -6, '11:15', 45); done(lab, -6, '11:15');
 
-  const gym = task({ title: 'Gym', category: 'Health', priority: 'low', dueDate: addDays(today, -5), estimateMinutes: 60 });
+  const gym = task({ title: 'Gym', category: 'Exercise', priority: 'low', dueDate: addDays(today, -5), estimateMinutes: 60 });
   session(gym, -5, '18:30', 60); done(gym, -5, '18:30');
 
   const physics = task({ title: 'Physics lab report', priority: 'high', dueDate: addDays(today, -3), estimateMinutes: 90 });
   session(physics, -4, '20:00', 75); session(physics, -3, '14:20', 50, 'Data analysis took longest'); done(physics, -3, '14:20');
 
-  const os5 = task({ title: 'Read Ch. 5 – Operating Systems', category: 'Study', dueDate: addDays(today, -2), estimateMinutes: 60 });
+  const os5 = task({ title: 'Read Ch. 5 – Operating Systems', category: 'Studying', dueDate: addDays(today, -2), estimateMinutes: 60 });
   session(os5, -2, '10:20', 50); done(os5, -2, '10:20');
 
   const resume = task({ title: 'Update resume', category: 'Personal', dueDate: addDays(today, -1), estimateMinutes: 45 });
   session(resume, -1, '19:40', 40); done(resume, -1, '19:40');
 
   // Due in the past but not finished (keeps the completion rate honest).
-  task({ title: 'Lab safety quiz', category: 'Study', priority: 'low', dueDate: addDays(today, -4), estimateMinutes: 20 });
+  task({ title: 'Lab safety quiz', category: 'Studying', priority: 'low', dueDate: addDays(today, -4), estimateMinutes: 20 });
 
   // ---- Open work ----
   task({ title: 'CS4680 homework 4', priority: 'high', dueDate: today, estimateMinutes: 120, notes: 'Prompt patterns write-up + code' });
   const calc7 = task({ title: 'Calculus problem set 7', priority: 'high', dueDate: addDays(today, 1), estimateMinutes: 90 });
   session(calc7, -1, '16:00', 30);
   calc7.status = 'in_progress';
-  task({ title: 'Prepare for OS quiz', category: 'Study', dueDate: addDays(today, 2), estimateMinutes: 60 });
+  task({ title: 'Prepare for OS quiz', category: 'Studying', dueDate: addDays(today, 2), estimateMinutes: 60 });
   task({ title: 'English essay draft', dueDate: addDays(today, 3), estimateMinutes: 150, notes: '1500 words, MLA' });
   task({ title: 'Team meeting notes', category: 'Work', priority: 'low', dueDate: addDays(today, 5), estimateMinutes: 30 });
   task({ title: 'Apply to 2 internships', category: 'Personal', priority: 'low', estimateMinutes: 45 });

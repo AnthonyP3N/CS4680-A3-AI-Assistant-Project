@@ -1,4 +1,5 @@
 import { upgradeJournalEntry } from './inputs.js';
+import { DEFAULT_CATEGORIES } from './categories.js';
 
 // The shape of a FocusFlow database. The whole thing is one small JSON
 // document, saved in the visitor's browser (see ../backend.js).
@@ -12,7 +13,7 @@ export const DEFAULT_PREFERENCES = Object.freeze({
   reflectAfterSession: true,
 });
 
-export const DEFAULT_CATEGORIES = Object.freeze(['Homework', 'Study', 'Work', 'Personal', 'Health']);
+export { DEFAULT_CATEGORIES };
 
 export function emptyDb() {
   return {
@@ -27,6 +28,16 @@ export function emptyDb() {
   };
 }
 
+// "Study" was a built-in category before "Studying" replaced it. Drop it
+// unless a task still uses it, and always offer the current built-in list.
+const LEGACY_DEFAULTS = ['Study'];
+function upgradeCategories(saved, tasks) {
+  const used = new Set(tasks.map((t) => t && t.category));
+  const kept = saved.filter((c) => typeof c === 'string' && c.trim() && (!LEGACY_DEFAULTS.includes(c) || used.has(c)));
+  const lower = new Set(kept.map((c) => c.toLowerCase()));
+  return [...kept, ...DEFAULT_CATEGORIES.filter((c) => !lower.has(c.toLowerCase()))];
+}
+
 /** Fill in anything missing from an older or imported database. */
 export function normalizeDb(raw) {
   const base = emptyDb();
@@ -36,7 +47,7 @@ export function normalizeDb(raw) {
     ...base,
     ...raw,
     preferences: { ...base.preferences, ...(raw.preferences && typeof raw.preferences === 'object' ? raw.preferences : {}) },
-    categories: arr(raw.categories).length ? raw.categories.filter((c) => typeof c === 'string') : base.categories,
+    categories: upgradeCategories(arr(raw.categories), arr(raw.tasks)),
     tasks: arr(raw.tasks),
     sessions: arr(raw.sessions),
     journal: arr(raw.journal).map(upgradeJournalEntry),
