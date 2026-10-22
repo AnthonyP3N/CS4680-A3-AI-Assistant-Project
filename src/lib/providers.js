@@ -1,4 +1,4 @@
-// Thin adapters over three hosted LLM APIs, called straight from the
+// Thin adapters over four hosted LLM APIs, called straight from the
 // visitor's browser with the visitor's own API key. Each takes the shared
 // persona (system prompt) plus a list of {role, content} messages and returns
 // the model's text and token usage. Only `fetch` is used — no vendor SDKs.
@@ -24,7 +24,24 @@ export const PROVIDERS = {
     keyUrl: 'https://console.anthropic.com/settings/keys',
     keyHint: 'Paid, pay as you go',
   },
+  // One key for many models. Model names ending in ":free" cost nothing but
+  // are rate-limited, and their hosts may keep or train on what you send.
+  openrouter: {
+    label: 'OpenRouter',
+    defaultModel: 'nvidia/nemotron-3-ultra-550b-a55b:free',
+    keyUrl: 'https://openrouter.ai/settings/keys',
+    keyHint: 'Free models available, about 50 requests a day',
+    modelsUrl: 'https://openrouter.ai/models?q=free',
+  },
 };
+
+/**
+ * True for OpenRouter's free models: their hosts' terms may allow keeping or
+ * training on prompts, so the UI says so before journal text is sent.
+ */
+export function mayTrainOnPrompts(provider) {
+  return provider?.name === 'openrouter' && /:free$/.test(provider.model || '');
+}
 
 export const DEMO_PROVIDER = Object.freeze({ name: 'demo', label: 'Demo mode (offline)', model: 'heuristic' });
 
@@ -49,14 +66,14 @@ export function resolveProvider(settings = {}) {
   return { name, label: PROVIDERS[name].label, model, key };
 }
 
-async function postJson(url, headers, body) {
+async function postJson(url, headers, body, timeoutMs = TIMEOUT_MS) {
   let res;
   try {
     res = await fetch(url, {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...headers },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (err) {
     const timedOut = err.name === 'TimeoutError' || err.name === 'AbortError';
@@ -117,7 +134,39 @@ async function callAnthropic({ key, model }, system, messages) {
   return { text, usage: { input: data.usage?.input_tokens, output: data.usage?.output_tokens } };
 }
 
-const CALLERS = { gemini: callGemini, openai: callOpenAI, anthropic: callAnthropic };
+// OpenRouter speaks the OpenAI chat format. Free models are big and shared,
+// so they get a longer timeout and clearer rate-limit messages.
+async function callOpenRouter({ key, model }, system, messages) {
+  let data;
+  try {
+    data = await postJson('https://openrouter.ai/api/v1/chat/completions', { authorization: `Bearer ${key}` }, {
+      model,
+      messages: [{ role: 'system', content: system }, ...messages],
+      // Ignored by models that don't support it; FocusFlow still checks the JSON itself.
+      response_format: { type: 'json_object' },
+      // Keep "thinking" models quick, and leave their reasoning out of the reply.
+      reasoning: { effort: 'low', exclude: true },
+      max_tokens: 4000,
+      temperature: 0.4,
+    }, 120000);
+  } catch (err) {
+    if (err instanceof ProviderError && err.status === 429) {
+      throw new ProviderError(`${err.message} Free OpenRouter models allow about 20 requests a minute and 50 a day (each FocusFlow action can use up to 3). Wait a minute, try again tomorrow, or pick another model in Settings.`, { status: 429, retryable: true });
+    }
+    if (err instanceof ProviderError && err.status === 402) {
+      throw new ProviderError(`${err.message} This model needs OpenRouter credits. Use a model whose name ends in ":free", or add credits.`, { status: 402 });
+    }
+    throw err;
+  }
+  // OpenRouter can report an upstream failure inside a 200 response.
+  const upstream = data?.error || data?.choices?.[0]?.error;
+  if (upstream) throw new ProviderError(`OpenRouter: ${upstream.message || 'the model host returned an error'}.`, { status: upstream.code, retryable: true });
+  const text = data?.choices?.[0]?.message?.content || '';
+  if (!text) throw new ProviderError(`The model returned no text (${data?.choices?.[0]?.finish_reason || 'unknown reason'}).`, { retryable: true });
+  return { text, usage: { input: data.usage?.prompt_tokens, output: data.usage?.completion_tokens } };
+}
+
+const CALLERS = { gemini: callGemini, openai: callOpenAI, anthropic: callAnthropic, openrouter: callOpenRouter };
 
 export async function callModel(provider, system, messages) {
   const fn = CALLERS[provider.name];

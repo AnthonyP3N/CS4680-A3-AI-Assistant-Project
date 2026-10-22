@@ -51,8 +51,11 @@ Each person uses their own key, so nobody is billed for anyone else's usage. The
 | Google Gemini | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | `gemini-flash-latest` | Free tier available |
 | OpenAI | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) | `gpt-5-mini` | Pay as you go |
 | Anthropic Claude | [console.anthropic.com](https://console.anthropic.com/settings/keys) | `claude-haiku-5-5` | Pay as you go |
+| OpenRouter | [openrouter.ai/settings/keys](https://openrouter.ai/settings/keys) | `nvidia/nemotron-3-ultra-550b-a55b:free` | Free models (about 20 a minute and 50 a day); any OpenRouter model name works |
 
 The key is saved only in that browser (localStorage), sent directly from the browser to the chosen provider, and never included in data exports. **Remove key** deletes it. Model names change often; if a provider says the model wasn't found, type a current one into **Model**. No SDKs are used; each provider is a small `fetch` adapter in `src/lib/providers.js`.
+
+**About OpenRouter's free models.** They cost nothing but are rate-limited, and each FocusFlow action can use up to three requests. Their hosts' terms may allow keeping or training on prompts, so FocusFlow shows a warning in setup, in Settings, and next to **Include my journal** on a review when a `:free` model is selected.
 
 **Demo mode.** Without a key, FocusFlow uses built-in rules that return the same JSON shapes and pass through the same checks. Every result is labeled "Demo suggestion" with a note that it isn't an AI model. Anyone can click through the whole app, and a live demo still works if the Wi-Fi fails.
 
@@ -173,7 +176,7 @@ src/
     categories.js          Built-in categories, matching and clean-up
     inputs.js, text.js     Input limits and journal word counts
     db.js, seed.js         Data shape, upgrades and sample data
-test/                      46 tests: stats, validators, refinement loop with a
+test/                      49 tests: stats, validators, refinement loop with a
                            fake model, quick add, journal limits, the backend
 .github/workflows/         Tests, builds, then publishes dist/ to GitHub Pages
 ```
@@ -196,7 +199,7 @@ npm run dev        # http://localhost:5173, reloads as you edit
 | Command | What it does |
 |---|---|
 | `npm run dev` | Development server at http://localhost:5173 |
-| `npm test` | Run the 46 tests |
+| `npm test` | Run the 49 tests |
 | `npm run build` | Build the site into `dist/` |
 | `npm run preview` | Serve the built `dist/` to check it before publishing |
 

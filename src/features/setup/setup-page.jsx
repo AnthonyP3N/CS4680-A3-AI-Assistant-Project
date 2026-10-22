@@ -27,9 +27,20 @@ const STEPS = {
   gemini: ['Open Google AI Studio and sign in with your Google account.', 'Click “Create API key”.', 'Copy the key and paste it below.'],
   openai: ['Open the OpenAI API keys page and sign in.', 'Add a payment method or credits if asked.', 'Click “Create new secret key”, copy it and paste it below.'],
   anthropic: ['Open the Anthropic Console and sign in.', 'Add credits if asked.', 'Click “Create Key”, copy it and paste it below.'],
+  openrouter: ['Open OpenRouter and sign in (Google, GitHub or email).', 'Click “Create API Key”, give it a name, and leave the credit limit empty or at 0.', 'Copy the key (it starts with “sk-or-”) and paste it below. It is only shown once.'],
 };
-const LINK_LABEL = { gemini: 'Open Google AI Studio', openai: 'Open OpenAI API keys', anthropic: 'Open the Anthropic Console' };
-const COST = { gemini: 'Free tier', openai: 'Paid', anthropic: 'Paid' };
+const LINK_LABEL = { gemini: 'Open Google AI Studio', openai: 'Open OpenAI API keys', anthropic: 'Open the Anthropic Console', openrouter: 'Open OpenRouter keys' };
+const COST = { gemini: 'Free tier', openai: 'Paid', anthropic: 'Paid', openrouter: 'Free models' };
+
+/** What to know before using OpenRouter's free models. */
+export function OpenRouterNote({ className }) {
+  return (
+    <div className={`flex flex-col gap-1.5 rounded-md bg-warn-soft p-3 text-sm ${className || ''}`}>
+      <p><strong>Free models:</strong> by default FocusFlow uses <code className="font-mono text-[13px]">nvidia/nemotron-3-ultra-550b-a55b:free</code>. It costs nothing, but allows about 50 requests a day, and each plan or review can use up to 3.</p>
+      <p><strong>Privacy:</strong> free models are run by hosts whose terms may let them keep or train on what you send. Your tasks and totals are fine for most people; think twice before ticking “Include my journal” on a review.</p>
+    </div>
+  );
+}
 
 function StepCard({ n, title, children }) {
   return (
@@ -100,7 +111,7 @@ export function SetupPage() {
                   <span aria-hidden="true" className={cn('mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border-2', mode === 'key' ? 'border-primary' : 'border-input')}>{mode === 'key' && <span className="size-2.5 rounded-full bg-primary" />}</span>
                   <span className="flex flex-col gap-1">
                     <strong>Use real AI with your own key</strong>
-                    <span className="text-sm text-ink-2">Plans and reviews written by Gemini, ChatGPT or Claude. Usage is billed to your own account; Gemini has a free tier.</span>
+                    <span className="text-sm text-ink-2">Plans and reviews written by Gemini, ChatGPT, Claude, or free models through OpenRouter. Usage is on your own account; Gemini and OpenRouter have free options.</span>
                   </span>
                 </button>
                 <button type="button" role="radio" aria-checked={mode === 'demo'} onClick={() => setMode('demo')} className={card(mode === 'demo')}>
@@ -127,6 +138,7 @@ export function SetupPage() {
                   <Button asChild variant="outline" className="self-start">
                     <a href={p.keyUrl} target="_blank" rel="noopener noreferrer">{LINK_LABEL[provider]}<ExternalLinkIcon aria-hidden="true" /><span className="sr-only">(opens in a new tab)</span></a>
                   </Button>
+                  {provider === 'openrouter' && <OpenRouterNote />}
                 </StepCard>
 
                 <StepCard n={3} title="Paste it and test">

@@ -15,6 +15,7 @@ export function shortProvider(p) {
   if (name === 'gemini') return 'Gemini';
   if (name === 'openai') return 'OpenAI';
   if (name === 'anthropic') return 'Claude';
+  if (name === 'openrouter') return 'OpenRouter';
   return 'Demo rules';
 }
 

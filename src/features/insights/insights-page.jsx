@@ -274,6 +274,7 @@ function ReviewPanel({ s, range, date }) {
             <span>
               <strong>Include my journal</strong>
               <span className="block text-sm text-ink-2">{nJournal ? `Sends this ${word}’s ${nJournal} ${nJournal === 1 ? 'entry' : 'entries'} with this one request, so the review can mention themes. Long entries are shortened to their first 400 characters. Off by default.` : `No journal entries this ${word}.`}</span>
+              {nJournal > 0 && boot.provider.mayTrain && <span className="mt-1 block text-sm font-bold text-warn">Your model ({boot.provider.model}) is a free one whose host may keep or train on what you send.</span>}
             </span>
           </label>
           <Button className="self-start" onClick={run} disabled={!s.sessionsCount && !s.completion.planned}><SparklesIcon />Write my review</Button>

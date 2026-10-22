@@ -11,7 +11,7 @@ import {
   normalizeBreakdown, normalizePlan, normalizeReview, repairPlan, validateBreakdown, validatePlan, validateReview,
 } from './validate.js';
 import { JOURNAL_AI_CHARS } from './inputs.js';
-import { DEMO_PROVIDER, ProviderError, callModel, extractJson } from './providers.js';
+import { DEMO_PROVIDER, ProviderError, callModel, extractJson, mayTrainOnPrompts } from './providers.js';
 import { demoBreakdown, demoPlan, demoReview } from './demoAI.js';
 
 const MAX_REFINEMENTS = 2;
@@ -31,7 +31,7 @@ export const metrics = {
 };
 /** Public description of a provider (never includes the key). */
 export function providerInfo(provider = DEMO_PROVIDER) {
-  return { name: provider.name, label: provider.label, model: provider.model, demo: provider.name === 'demo' };
+  return { name: provider.name, label: provider.label, model: provider.model, demo: provider.name === 'demo', mayTrain: mayTrainOnPrompts(provider) };
 }
 
 async function callWithRetry(provider, messages) {

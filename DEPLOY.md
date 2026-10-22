@@ -82,7 +82,7 @@ The link also appears in **Settings → Pages** and on the finished **deploy** j
 
 The first visit opens a guided setup. Or, at any time:
 
-1. Get a key. Google Gemini has a free tier: open <https://aistudio.google.com/apikey> and create an API key.
+1. Get a key. Google Gemini has a free tier: open <https://aistudio.google.com/apikey> and create an API key. OpenRouter also has free models: create a key at <https://openrouter.ai/settings/keys> and choose **OpenRouter** in the next step.
 2. In FocusFlow, open **Settings**, keep **Google Gemini** selected, and paste the key.
 3. Click **Test connection**. You should see "Connected to Google Gemini".
 4. Click **Save settings**. The chip in the top right changes from **AI: Demo** to **AI: Gemini**.
@@ -111,7 +111,7 @@ Needs Node.js 20.19 or newer.
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm test           # 46 tests
+npm test           # 49 tests
 npm run build      # builds dist/, exactly what GitHub Pages publishes
 npm run preview    # serves dist/ so you can check the build
 ```

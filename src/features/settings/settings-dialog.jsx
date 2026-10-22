@@ -10,6 +10,7 @@ import { Separator, Switch } from '@/components/ui/misc';
 import { api } from '@/data/api';
 import { clearAiSettings, getAiSettings, saveAiSettings, testConnection } from '@/data/backend';
 import { PROVIDERS } from '@/lib/providers';
+import { OpenRouterNote } from '@/features/setup/setup-page';
 import { showError, useApp } from '@/state/app';
 import { navigate } from '@/hooks/use-hash-route';
 import { useConfirm } from '@/components/confirm';
@@ -184,8 +185,14 @@ export function SettingsDialog({ open, section, onOpenChange }) {
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="ai-model">Model (optional)</Label>
-              <Input id="ai-model" value={ai.model} onChange={(e) => setAi((a) => ({ ...a, model: e.target.value }))} placeholder={provider.defaultModel} autoComplete="off" spellCheck={false} />
+              <Input id="ai-model" value={ai.model} onChange={(e) => setAi((a) => ({ ...a, model: e.target.value }))} placeholder={provider.defaultModel} autoComplete="off" spellCheck={false} aria-describedby={provider.modelsUrl ? 'ai-model-help' : undefined} />
+              {provider.modelsUrl && (
+                <p id="ai-model-help" className="text-sm text-muted-foreground">
+                  Leave empty for the default, or paste any model name from <a href={provider.modelsUrl} target="_blank" rel="noopener noreferrer" className="font-bold text-foreground underline underline-offset-2">OpenRouter’s free models<span className="sr-only"> (opens in a new tab)</span></a>, e.g. one ending in “:free”.
+                </p>
+              )}
             </div>
+            {ai.provider === 'openrouter' && <OpenRouterNote />}
             <div className="flex gap-2.5 rounded-md bg-muted p-3 text-sm text-ink-2">
               <LockIcon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
               <p>Your key is saved only in this browser and sent directly to the provider you chose. FocusFlow has no server, so nobody else can see it, and it is never included when you export your data. Usage is billed to your own account, so a free-tier key or one with a spending limit is a good idea. Don’t save a key on a shared computer.</p>
