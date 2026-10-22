@@ -29,9 +29,9 @@ export function buildSampleDb(tz = 'America/Los_Angeles', today) {
     });
   };
   const done = (t, offset, hhmm) => { t.status = 'done'; t.completedAt = at(offset, hhmm); };
-  const journal = (offset, hhmm, body, tags, taskId = null) => {
-    const energy = tags.includes('energy-low') ? 'low' : tags.includes('energy-high') ? 'high' : null;
-    db.journal.push({ id: newId('jrn'), body, tags: tags.filter((t) => !t.startsWith('energy-')), energy, taskId, sessionId: null, createdAt: at(offset, hhmm) });
+  const journal = (offset, hhmm, title, body, tags, taskId = null) => {
+    const energy = tags.includes('energy-low') ? 'low' : tags.includes('energy-high') ? 'high' : tags.includes('energy-ok') ? 'ok' : null;
+    db.journal.push({ id: newId('jrn'), title, body, tags: tags.filter((t) => !t.startsWith('energy-')), energy, taskId, sessionId: null, createdAt: at(offset, hhmm) });
   };
 
   // ---- Completed work (previous ~2 weeks) ----
@@ -76,12 +76,11 @@ export function buildSampleDb(tz = 'America/Los_Angeles', today) {
   task({ title: 'Apply to 2 internships', category: 'Personal', priority: 'low', estimateMinutes: 45 });
 
   // ---- Journal ----
-  journal(-8, '20:40', 'Essay outline took way longer than I planned. Kept rewriting the thesis instead of moving on.', ['stuck', 'reflection'], outline.id);
-  journal(-6, '11:30', 'Prompt lab went well once I put my phone in another room.', ['win', 'distraction'], lab.id);
-  journal(-5, '21:00', 'Tired after my work shift, only managed the gym.', ['energy-low']);
-  journal(-3, '14:30', 'Physics report: the data analysis section was the slow part, not the writing.', ['reflection'], physics.id);
-  journal(-2, '10:30', 'Library in the morning = best focus all week.', ['win', 'energy-high'], os5.id);
-  journal(-1, '19:50', 'Kept checking messages while editing my resume.', ['distraction'], resume.id);
-
+  journal(-8, '20:40', 'The thesis that kept moving', 'Essay outline took way longer than I planned. Kept rewriting the thesis instead of moving on.\n\nNext time I\'ll write a rough thesis, outline under it, and only fix the wording at the end.', ['stuck', 'reflection', 'energy-ok'], outline.id);
+  journal(-6, '11:30', 'Phone in another room', 'Prompt lab went well once I put my phone in another room.\n\nThe first 20 minutes were scattered. After the phone left, the next block felt twice as long in a good way.', ['win', 'distraction', 'energy-high'], lab.id);
+  journal(-5, '21:00', '', 'Tired after my work shift, only managed the gym.', ['energy-low']);
+  journal(-3, '14:30', 'Analysis, not writing, was the slow part', 'Physics report: the data analysis section was the slow part, not the writing.\n\nI estimated by page count, but the time went into cleaning the data and redoing one graph. Next lab I\'ll start with the analysis while the lab is still fresh.', ['reflection', 'energy-ok'], physics.id);
+  journal(-2, '10:30', 'Library mornings work', 'Library in the morning = best focus all week. Two chapters with no breaks I didn\'t plan.', ['win', 'energy-high'], os5.id);
+  journal(-1, '19:50', 'The cost of one more tab', 'Kept checking messages while editing my resume. Every check felt like a few seconds, but the edit that should have taken 45 minutes took most of the evening.\n\nTomorrow: close chat before I start the timer, not halfway through.', ['distraction', 'energy-low'], resume.id);
   return db;
 }

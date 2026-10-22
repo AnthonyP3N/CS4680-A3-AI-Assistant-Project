@@ -253,7 +253,7 @@ export function buildReviewInput(db, { range, date, includeJournal }) {
       .map((j) => ({ ...j, date: fmt.format(new Date(j.createdAt)) }))
       .filter((j) => j.date >= start && j.date <= end)
       .slice(-12)
-      .map((j) => ({ date: j.date, tags: j.tags, ...(j.energy ? { energy: j.energy } : {}), text: j.body.slice(0, JOURNAL_AI_CHARS) }));
+      .map((j) => ({ date: j.date, ...(j.title ? { title: j.title } : {}), tags: j.tags, ...(j.energy ? { energy: j.energy } : {}), text: j.body.slice(0, JOURNAL_AI_CHARS) }));
   }
   return { input, stats };
 }

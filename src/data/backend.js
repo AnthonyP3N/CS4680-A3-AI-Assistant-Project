@@ -376,7 +376,7 @@ route('PATCH', '/api/journal/:id', (p, body) => {
   if (error) throw new HttpError(400, error);
   return store.update((db) => {
     const entry = findOr404(db.journal, p.id, 'Entry');
-    Object.assign(entry, { body: value.body, tags: value.tags, energy: value.energy, updatedAt: now() });
+    Object.assign(entry, { title: value.title, body: value.body, tags: value.tags, energy: value.energy, updatedAt: now() });
     return entry;
   });
 });

@@ -26,11 +26,11 @@ FocusFlow closes it: **plan → track → reflect → understand → improve.**
 |---|---|
 | **Today** | Quick add that understands `45m`, `2h`, `today`/`fri`, `high`/`low` and `#category`, with a live preview of what it understood. A category picker with a built-in list (Studying, Homework, Work, Exercise, Health, Personal, Errands, Chores, Bills, Finances, Social, Other) where you can search or create your own; `#study` or `#bills` in quick add matches them too. Tasks grouped into Overdue, Due today, This week and Later. **Plan the rest of my day** sends your open tasks to the AI and shows a timeline you accept block by block. **Split into steps** breaks a big task into subtasks. |
 | **Focus** | Start, pause, resume, stop. The timer survives refresh (time comes from timestamps) and shows in the header and tab title on every page. Log time by hand if you forgot to start it. |
-| **Journal** | Prompts to get started, energy (low / OK / high) and tags (win, stuck, distraction, idea), an autosaved draft, a full-screen writing mode, word count, search with highlighted excerpts, filters, and inline editing. Entries up to 10,000 characters (about 1,500 words); long ones fold to a preview. |
+| **Journal** | Entries on the left, grouped by month, with search, filters (wins, stuck, low energy, after a session…) and newest/oldest order. The selected entry opens in full in a reading pane, with older/newer links, edit in place, copy and delete with undo. Below it, **New entry** offers a question to start from, an optional title, energy (low / OK / high), tags, an autosaved draft, a word count and full-screen writing. Entries up to 10,000 characters (about 1,500 words). On phones, an entry opens in a side sheet. |
 | **Insights** | Day, week and month: focused time, completion rate and estimate accuracy (with change from the last period), a day-by-day chart with a table view, time by category, and an estimate-versus-reality ledger. **Write my review** asks the AI for patterns and two suggestions you can add as tasks. |
 | **AI history** | Every AI request: what was sent, what came back, how it was checked, tokens used, and what you decided. |
 
-![Journal: prompts, energy and tags, and a privacy line saying what the AI can see](docs/screenshots/journal.png)
+![Journal: entry list, reading pane and the new-entry form](docs/screenshots/journal.png)
 
 Small things that make it easier to use every day:
 
@@ -150,7 +150,7 @@ src/
   features/
     today/                 Quick add, task list, split into steps, plan panel
     focus/                 Timer, log time, check-in sheet after a session
-    journal/               Composer, entries (search, filters, edit)
+    journal/               Entry list, reader (edit, older/newer), composer
     insights/              Tiles, chart, ledger, AI review
     history/               AI request log
     settings/, setup/      AI key settings and first-run guided setup
@@ -172,7 +172,7 @@ src/
     categories.js          Built-in categories, matching and clean-up
     inputs.js, text.js     Input limits and journal word counts
     db.js, seed.js         Data shape, upgrades and sample data
-test/                      41 tests: stats, validators, refinement loop with a
+test/                      44 tests: stats, validators, refinement loop with a
                            fake model, quick add, journal limits, the backend
 .github/workflows/         Tests, builds, then publishes dist/ to GitHub Pages
 ```
@@ -195,7 +195,7 @@ npm run dev        # http://localhost:5173, reloads as you edit
 | Command | What it does |
 |---|---|
 | `npm run dev` | Development server at http://localhost:5173 |
-| `npm test` | Run the 41 tests |
+| `npm test` | Run the 44 tests |
 | `npm run build` | Build the site into `dist/` |
 | `npm run preview` | Serve the built `dist/` to check it before publishing |
 

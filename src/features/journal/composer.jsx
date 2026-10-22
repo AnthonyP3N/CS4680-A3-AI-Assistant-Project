@@ -1,31 +1,42 @@
-// New reflection: linked to the last session, prompt buttons, energy and
-// tags, a word count, autosaved drafts and a full-screen writing mode.
+// New entry: a question to start from, an optional title, the reflection,
+// energy and tags. Linked to the last session, autosaved as a draft, with a
+// word count and a full-screen writing mode for long entries.
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { LockIcon, Maximize2Icon, XIcon } from 'lucide-react';
+import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { LockIcon, Maximize2Icon, PenLineIcon, ShuffleIcon, XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/misc';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { api } from '@/data/api';
-import { JOURNAL_AI_CHARS } from '@/lib/inputs';
+import { fmtDateShort, fmtMinutes } from '@/lib/format';
+import { JOURNAL_AI_CHARS, JOURNAL_TITLE_MAX } from '@/lib/inputs';
+import { PROMPTS, TAG_OPTIONS } from '@/lib/journal-meta';
 import { draftStatus } from '@/lib/text';
-import { ENERGY_OPTIONS, PROMPTS, TAG_OPTIONS } from '@/lib/journal-meta';
-import { fmtMinutes } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/state/app';
+import { EnergyField, TagsField } from './fields';
 
 const DRAFT_KEY = 'focusflow:journal-draft:v2';
+const EMPTY = { title: '', body: '', tags: [], energy: '' };
 
 function loadDraft() {
   try {
     const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null') || JSON.parse(localStorage.getItem('focusflow:journal-draft:v1') || 'null');
-    return { body: typeof d?.body === 'string' ? d.body : '', tags: Array.isArray(d?.tags) ? d.tags.filter((t) => TAG_OPTIONS.some(([v]) => v === t)) : [], energy: d?.energy || '' };
+    return {
+      title: typeof d?.title === 'string' ? d.title : '',
+      body: typeof d?.body === 'string' ? d.body : '',
+      tags: Array.isArray(d?.tags) ? d.tags.filter((t) => TAG_OPTIONS.some(([v]) => v === t)) : [],
+      energy: d?.energy || '',
+    };
   } catch {
-    return { body: '', tags: [], energy: '' };
+    return { ...EMPTY };
   }
 }
 
-/** The session this reflection is probably about: the last one, if recent and not yet reflected on. */
+const hasContent = (d) => !!(d.title.trim() || d.body.trim() || d.tags.length || d.energy);
+
+/** The session this entry is probably about: the last one, if recent and not yet reflected on. */
 function useRecentSession() {
   const { boot } = useApp();
   return useMemo(() => {
@@ -36,30 +47,44 @@ function useRecentSession() {
   }, [boot.recentSessions, boot.journal]);
 }
 
-function Counter({ status, id }) {
+function Counter({ status, id, hint }) {
   return (
     <p id={id} aria-live="polite" className={cn('min-h-5 text-sm tabular-nums', status.tone === 'over' ? 'font-bold text-destructive' : status.tone === 'warn' ? 'font-bold text-warn' : 'text-muted-foreground')}>
-      {status.text}
+      {status.text || hint}
     </p>
   );
 }
 
-export function Composer() {
-  const { mutate } = useApp();
+/** Ref exposes focus(): scroll to the composer and put the cursor in the title. */
+export const Composer = forwardRef(function Composer({ onSaved }, fwdRef) {
+  const { boot, mutate } = useApp();
   const session = useRecentSession();
   const [draft, setDraft] = useState(loadDraft);
   const [linked, setLinked] = useState(true);
   const [full, setFull] = useState(false);
+  // Start from a different question each day.
+  const [promptIdx, setPromptIdx] = useState(() => Number(boot.today.slice(8, 10)) % PROMPTS.length);
+  const sectionRef = useRef(null);
+  const titleRef = useRef(null);
   const ref = useRef(null);
   const fullRef = useRef(null);
   const status = draftStatus(draft.body);
-  const canSave = (draft.body.trim() || draft.energy || draft.tags.length) && status.tone !== 'over';
+  const canSave = hasContent(draft) && status.tone !== 'over';
+  const prompt = PROMPTS[promptIdx];
+  const others = [1, 2].map((k) => (promptIdx + k) % PROMPTS.length);
+
+  useImperativeHandle(fwdRef, () => ({
+    focus() {
+      sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(() => titleRef.current?.focus({ preventScroll: true }), 250);
+    },
+  }));
 
   // Autosave the draft, so a refresh or closed tab never loses writing.
   useEffect(() => {
     const id = setTimeout(() => {
       try {
-        if (draft.body.trim() || draft.tags.length || draft.energy) localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+        if (hasContent(draft)) localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
         else localStorage.removeItem(DRAFT_KEY);
         localStorage.removeItem('focusflow:journal-draft:v1');
       } catch { /* storage blocked: the draft still lives in memory */ }
@@ -67,30 +92,22 @@ export function Composer() {
     return () => clearTimeout(id);
   }, [draft]);
 
-  // Grow with the text up to 60% of the screen, then scroll.
+  // Grow with the text up to 55% of the screen, then scroll.
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     el.style.height = 'auto';
-    el.style.height = `${Math.max(150, Math.min(el.scrollHeight + 2, Math.round(window.innerHeight * 0.6)))}px`;
+    el.style.height = `${Math.max(132, Math.min(el.scrollHeight + 2, Math.round(window.innerHeight * 0.55)))}px`;
   }, [draft.body]);
 
-  const setBody = (body) => setDraft((d) => ({ ...d, body }));
-  const applyPrompt = (p) => {
-    const body = draft.body.trim() ? `${draft.body.replace(/\s+$/, '')}\n${p} ` : `${p} `;
-    setBody(body);
-    setTimeout(() => {
-      const el = full ? fullRef.current : ref.current;
-      el?.focus();
-      el?.setSelectionRange(body.length, body.length);
-    }, 10);
-  };
+  const set = (k) => (v) => setDraft((d) => ({ ...d, [k]: v }));
 
   const save = async () => {
     if (!canSave) return;
-    const ok = await mutate(() => api('/api/journal', {
+    const created = await mutate(() => api('/api/journal', {
       method: 'POST',
       body: {
+        title: draft.title,
         body: draft.body,
         tags: draft.tags,
         energy: draft.energy || null,
@@ -98,103 +115,114 @@ export function Composer() {
         sessionId: linked && session ? session.id : null,
       },
     }), { undo: true, success: 'Reflection saved' });
-    if (ok) {
-      setDraft({ body: '', tags: [], energy: '' });
+    if (created) {
+      setDraft({ ...EMPTY });
       setFull(false);
       setLinked(true);
+      setPromptIdx((i) => (i + 1) % PROMPTS.length);
+      onSaved?.(created);
     }
   };
 
-  const placeholder = linked && session ? `How did “${session.taskTitleSnapshot}” go? What took the most time?` : 'What happened in that session? A sentence or two is plenty.';
+  const openFull = () => {
+    setFull(true);
+    setTimeout(() => { fullRef.current?.focus(); fullRef.current?.setSelectionRange(draft.body.length, draft.body.length); }, 50);
+  };
+
+  const placeholder = linked && session ? `How did “${session.taskTitleSnapshot}” go?` : 'Answer the question above, or write about anything.';
 
   return (
-    <section aria-labelledby="new-h" className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="new-h" className="text-lg font-bold">New reflection</h2>
-        {session && linked && (
-          <span className="inline-flex items-center gap-2 rounded-full border border-border bg-muted py-1 pr-1 pl-3 text-sm">
-            After <strong>{session.taskTitleSnapshot}</strong>, {fmtMinutes(session.durationSeconds / 60)}
-            <button type="button" onClick={() => setLinked(false)} aria-label={`Don’t link this reflection to ${session.taskTitleSnapshot}`} className="grid size-8 place-items-center rounded-full hover:bg-border">
-              <XIcon className="size-3.5" strokeWidth={3} />
-            </button>
-          </span>
-        )}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-xs font-bold text-ink-2">Need a start?</span>
-        {PROMPTS.map((p) => (
-          <button key={p} type="button" onClick={() => applyPrompt(p)} className="min-h-9 rounded-full border border-rule-strong bg-card px-3 text-sm hover:bg-accent">{p}</button>
-        ))}
+    <section ref={sectionRef} aria-labelledby="new-h" className="flex scroll-mt-24 flex-col gap-4 rounded-xl border border-border bg-card p-5 sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="flex flex-col gap-1">
+          <h2 id="new-h" className="flex items-center gap-2 text-lg font-bold"><PenLineIcon aria-hidden="true" className="size-5" />New entry</h2>
+          <p className="flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground">
+            Today, {fmtDateShort(boot.today)}
+            {session && linked && (
+              <span className="inline-flex items-center gap-1">
+                · After <strong className="font-bold text-ink-2">{session.taskTitleSnapshot}</strong>, {fmtMinutes(session.durationSeconds / 60)}
+                <button type="button" onClick={() => setLinked(false)} aria-label={`Don’t link this entry to ${session.taskTitleSnapshot}`} className="grid size-7 place-items-center rounded-full hover:bg-accent">
+                  <XIcon className="size-3.5" strokeWidth={3} />
+                </button>
+              </span>
+            )}
+          </p>
+        </div>
+        <span className="pt-1 text-xs text-muted-foreground" aria-live="polite">{hasContent(draft) ? 'Draft saved on this device' : ''}</span>
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="entry" className="sr-only">Reflection</label>
-        <textarea
-          id="entry"
-          ref={ref}
-          value={draft.body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder={placeholder}
-          aria-describedby="entry-count"
-          aria-invalid={status.tone === 'over' || undefined}
-          className={cn('ruled w-full resize-y rounded-lg border border-border border-l-[3px] border-l-rule-strong bg-card px-3.5 py-1 text-base outline-none placeholder:text-muted-foreground focus-visible:outline-3 focus-visible:outline-ring', status.tone === 'over' && 'border-destructive')}
-        />
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <Counter status={status} id="entry-count" />
-          <Button type="button" variant="outline" size="sm" onClick={() => { setFull(true); setTimeout(() => { fullRef.current?.focus(); fullRef.current?.setSelectionRange(draft.body.length, draft.body.length); }, 50); }}>
-            <Maximize2Icon aria-hidden="true" />Full screen
-          </Button>
+        <span className="text-xs font-bold tracking-wide text-warn uppercase">A place to start</span>
+        <p id="prompt-q" className="text-lg leading-snug font-bold">{prompt.q}</p>
+        <div className="flex flex-wrap items-center gap-x-1 text-sm text-muted-foreground">
+          {others.map((i) => (
+            <button key={i} type="button" onClick={() => setPromptIdx(i)} className="min-h-8 rounded px-1.5 underline-offset-2 hover:bg-accent hover:text-foreground hover:underline">{PROMPTS[i].short}</button>
+          ))}
+          <button type="button" onClick={() => setPromptIdx((i) => (i + 3) % PROMPTS.length)} aria-label="Show other questions" className="grid size-8 place-items-center rounded hover:bg-accent hover:text-foreground">
+            <ShuffleIcon className="size-4" aria-hidden="true" />
+          </button>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-5">
-        <div className="flex flex-col gap-2">
-          <span id="energy-l" className="text-sm font-bold text-ink-2">Energy</span>
-          <ToggleGroup type="single" value={draft.energy} onValueChange={(v) => setDraft((d) => ({ ...d, energy: v }))} aria-labelledby="energy-l">
-            {ENERGY_OPTIONS.map(([v, l]) => <ToggleGroupItem key={v} value={v} className="min-w-14">{l}</ToggleGroupItem>)}
-          </ToggleGroup>
+      <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_minmax(200px,240px)]">
+        <div className="flex min-w-0 flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="entry-title">Entry title <span className="font-normal text-muted-foreground">(optional)</span></Label>
+            <Input id="entry-title" ref={titleRef} value={draft.title} maxLength={JOURNAL_TITLE_MAX} onChange={(e) => set('title')(e.target.value)} placeholder="e.g. Make the first step smaller" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="entry">Your reflection</Label>
+            <textarea
+              id="entry"
+              ref={ref}
+              value={draft.body}
+              onChange={(e) => set('body')(e.target.value)}
+              placeholder={placeholder}
+              aria-describedby="prompt-q entry-count"
+              aria-invalid={status.tone === 'over' || undefined}
+              className={cn('ruled w-full resize-y rounded-lg border border-input bg-card px-3.5 py-1 text-base outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-3 focus-visible:outline-ring', status.tone === 'over' && 'border-destructive')}
+            />
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Counter status={status} id="entry-count" hint="A few lines is enough." />
+              <Button type="button" variant="ghost" size="sm" onClick={openFull}><Maximize2Icon aria-hidden="true" />Full screen</Button>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-1 basis-60 flex-col gap-2">
-          <span id="tags-l" className="text-sm font-bold text-ink-2">What happened <span className="font-normal text-muted-foreground">(optional)</span></span>
-          <ToggleGroup type="multiple" value={draft.tags} onValueChange={(v) => setDraft((d) => ({ ...d, tags: v }))} aria-labelledby="tags-l" className="gap-1.5 border-0 bg-transparent p-0">
-            {TAG_OPTIONS.map(([v, l]) => (
-              <ToggleGroupItem key={v} value={v} className="rounded-full border border-border bg-card px-3.5 data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">{l}</ToggleGroupItem>
-            ))}
-          </ToggleGroup>
+        <div className="flex flex-col gap-4">
+          <EnergyField id="energy-l" value={draft.energy} onChange={set('energy')} />
+          <TagsField id="tags-l" value={draft.tags} onChange={set('tags')} />
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
-        <span className="inline-flex items-start gap-2 text-sm text-ink-2">
-          <LockIcon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          Private to this browser. Shared with AI only if you choose to, per review, and only the first {JOURNAL_AI_CHARS} characters of each entry.
-        </span>
-        <span className="flex items-center gap-3">
-          {(draft.body.trim() || draft.energy || draft.tags.length > 0) && <span className="text-xs text-muted-foreground">Draft saved on this device</span>}
-          <Button onClick={save} disabled={!canSave}>Save reflection</Button>
-        </span>
+      <div className="flex justify-end">
+        <Button onClick={save} disabled={!canSave}>Save reflection</Button>
       </div>
+
+      <p className="-mx-5 -mb-5 flex items-start gap-2 rounded-b-xl border-t border-border bg-muted px-5 py-3 text-sm text-ink-2 sm:-mx-6 sm:-mb-6 sm:px-6">
+        <LockIcon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+        Private to this browser. AI sharing is opt-in per review: only that period’s entries, shortened to the first {JOURNAL_AI_CHARS} characters each.
+      </p>
 
       <Dialog open={full} onOpenChange={setFull}>
         <DialogContent className="top-0 left-0 h-dvh max-h-none w-screen max-w-none translate-x-0 translate-y-0 rounded-none border-0 p-0 sm:max-w-none" showCloseButton={false}>
           <div className="mx-auto flex h-full w-full max-w-3xl flex-col gap-3 px-5 py-6">
             <div className="flex items-center justify-between gap-3">
-              <DialogTitle className="text-lg">New reflection</DialogTitle>
+              <DialogTitle className="text-lg">New entry</DialogTitle>
               <Button variant="outline" onClick={() => setFull(false)}>Exit full screen</Button>
             </div>
-            <DialogDescription className="sr-only">Distraction-free writing. Press Escape to exit.</DialogDescription>
+            <DialogDescription className="text-ink-2">{prompt.q}</DialogDescription>
+            <Input value={draft.title} maxLength={JOURNAL_TITLE_MAX} onChange={(e) => set('title')(e.target.value)} placeholder="Title (optional)" aria-label="Entry title" className="h-12 text-lg font-bold" />
             <textarea
               ref={fullRef}
               value={draft.body}
-              onChange={(e) => setBody(e.target.value)}
-              aria-label="Reflection"
+              onChange={(e) => set('body')(e.target.value)}
+              aria-label="Your reflection"
               aria-describedby="entry-count-full"
               placeholder={placeholder}
-              className="ruled-lg min-h-0 flex-1 resize-none rounded-lg border border-border border-l-[3px] border-l-rule-strong bg-card px-4 py-1 text-lg outline-none focus-visible:outline-3 focus-visible:outline-ring"
+              className="ruled-lg min-h-0 flex-1 resize-none rounded-lg border border-input bg-card px-4 py-1 text-lg outline-none focus-visible:outline-3 focus-visible:outline-ring"
             />
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <Counter status={status} id="entry-count-full" />
+              <Counter status={status} id="entry-count-full" hint="Press Escape to go back." />
               <Button onClick={save} disabled={!canSave}>Save reflection</Button>
             </div>
           </div>
@@ -202,4 +230,4 @@ export function Composer() {
       </Dialog>
     </section>
   );
-}
+});

@@ -14,6 +14,8 @@ export const STATUSES = ['todo', 'in_progress', 'done'];
 export const JOURNAL_MAX_CHARS = 10000;
 /** Characters sent to the AI per entry when the user includes their journal. */
 export const JOURNAL_AI_CHARS = 400;
+/** Optional short title for an entry. */
+export const JOURNAL_TITLE_MAX = 80;
 
 export const JOURNAL_TAGS = ['win', 'stuck', 'distraction', 'idea', 'reflection'];
 export const ENERGY_LEVELS = ['low', 'ok', 'high'];
@@ -81,6 +83,8 @@ export function validateJournal(body = {}) {
   if (text.length > JOURNAL_MAX_CHARS) {
     return { error: `This entry is too long to save. Entries can be up to ${JOURNAL_MAX_CHARS.toLocaleString('en-US')} characters (about 1,700 words). Shorten it or split it into two entries.` };
   }
+  const title = typeof body.title === 'string' ? body.title.replace(/\s+/g, ' ').trim() : '';
+  if (title.length > JOURNAL_TITLE_MAX) return { error: `Keep the title to ${JOURNAL_TITLE_MAX} characters or fewer.` };
   const rawTags = Array.isArray(body.tags) ? body.tags : [];
   let energy = ENERGY_LEVELS.includes(body.energy) ? body.energy : null;
   for (const t of rawTags) if (!energy && LEGACY_ENERGY_TAGS[t]) energy = LEGACY_ENERGY_TAGS[t];
@@ -88,8 +92,8 @@ export function validateJournal(body = {}) {
   const taskId = typeof body.taskId === 'string' ? body.taskId : null;
   const sessionId = typeof body.sessionId === 'string' ? body.sessionId : null;
   // A quick check-in after a session can be just energy or tags, with no words.
-  if (!text && !energy && !tags.length) return { error: 'Write something, or pick your energy or a tag, before saving.' };
-  return { value: { body: text, tags, energy, taskId, sessionId } };
+  if (!text && !title && !energy && !tags.length) return { error: 'Write something, or pick your energy or a tag, before saving.' };
+  return { value: { title, body: text, tags, energy, taskId, sessionId } };
 }
 
 /** Bring an entry from an older version (energy stored as a tag) up to date. */

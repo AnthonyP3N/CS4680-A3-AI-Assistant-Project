@@ -128,3 +128,12 @@ test('undo snapshots restore everything', async () => {
   backend.restore(before);
   assert.equal((await handle('GET', '/api/bootstrap')).tasks.length, before.tasks.length);
 });
+
+test('journal titles are saved and can be edited', async () => {
+  const { handle, store } = await import('../src/data/backend.js');
+  store.reset?.();
+  const e = await handle('POST', '/api/journal', { title: 'A smaller start', body: 'Two short sessions worked.', energy: 'high', tags: ['win'] });
+  assert.equal(e.title, 'A smaller start');
+  const edited = await handle('PATCH', `/api/journal/${e.id}`, { title: 'A smaller start, a better session', body: e.body, tags: e.tags, energy: e.energy });
+  assert.equal(edited.title, 'A smaller start, a better session');
+});
