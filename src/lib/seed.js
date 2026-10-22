@@ -4,6 +4,7 @@
 
 import { addDays, zonedTimeToIso } from './dates.js';
 import { emptyDb, newId } from './db.js';
+import { FOCUS_CATEGORY } from './focus.js';
 
 export function buildSampleDb(tz = 'America/Los_Angeles', today) {
   const db = emptyDb();
@@ -34,6 +35,17 @@ export function buildSampleDb(tz = 'America/Los_Angeles', today) {
     db.journal.push({ id: newId('jrn'), title, body, tags: tags.filter((t) => !t.startsWith('energy-')), energy, taskId, sessionId: null, createdAt: at(offset, hhmm) });
   };
 
+  // Focus time with no task, counted under "Focus".
+  const focus = (offset, endHHMM, minutes, title) => {
+    const endedAt = at(offset, endHHMM);
+    if (Date.parse(endedAt) > nowMs) return;
+    db.sessions.push({
+      id: newId('ses'), taskId: null, taskTitleSnapshot: title, categorySnapshot: FOCUS_CATEGORY,
+      status: 'stopped', source: 'timer', targetMinutes: minutes, startedAt: new Date(Date.parse(endedAt) - minutes * 60000).toISOString(),
+      endedAt, lastResumedAt: null, accumulatedSeconds: minutes * 60, durationSeconds: minutes * 60, note: '',
+    });
+  };
+
   // ---- Completed work (previous ~2 weeks) ----
   const calc5 = task({ title: 'Calculus problem set 5', priority: 'high', dueDate: addDays(today, -10), estimateMinutes: 90 });
   session(calc5, -11, '21:10', 50); session(calc5, -10, '17:00', 55); done(calc5, -10, '17:00');
@@ -61,6 +73,10 @@ export function buildSampleDb(tz = 'America/Los_Angeles', today) {
 
   const resume = task({ title: 'Update resume', category: 'Personal', dueDate: addDays(today, -1), estimateMinutes: 45 });
   session(resume, -1, '19:40', 40); done(resume, -1, '19:40');
+
+  focus(-9, '22:00', 25, 'Reading for fun');
+  focus(-4, '09:30', 25, 'Focus time');
+  focus(-2, '21:30', 45, 'Planning the week');
 
   // Due in the past but not finished (keeps the completion rate honest).
   task({ title: 'Lab safety quiz', category: 'Studying', priority: 'low', dueDate: addDays(today, -4), estimateMinutes: 20 });

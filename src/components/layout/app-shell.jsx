@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { ChartColumnIcon, ListTodoIcon, NotebookPenIcon, PauseIcon, PlayIcon, SearchIcon, SettingsIcon, SparklesIcon, TimerIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/misc';
 import { api } from '@/data/api';
 import { useNow } from '@/hooks/use-now';
 import { navigate } from '@/hooks/use-hash-route';
-import { fmtClock, fmtDateLong, fmtDayShort } from '@/lib/format';
+import { fmtClock, fmtDateLong, fmtDayShort, fmtMinutes } from '@/lib/format';
+import { FOCUS_MAX, blockMinutes, timerFace } from '@/lib/focus';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/state/app';
 import { UiContext, focusQuickAdd } from '@/state/ui';
@@ -33,22 +35,69 @@ export function BrandMark({ size = 28 }) {
   );
 }
 
+/** A short two-note chime. Silently skipped if the browser blocks audio. */
+function chime() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    ctx.resume?.();
+    [[660, 0], [880, 0.18]].forEach(([hz, at]) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.value = hz;
+      g.gain.setValueAtTime(0.0001, ctx.currentTime + at);
+      g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + at + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + at + 0.5);
+      o.connect(g).connect(ctx.destination);
+      o.start(ctx.currentTime + at);
+      o.stop(ctx.currentTime + at + 0.55);
+    });
+    setTimeout(() => ctx.close?.(), 1200);
+  } catch { /* no sound available */ }
+}
+
 function TimerPill() {
   const { boot, mutate, elapsedSeconds } = useApp();
   useNow(1000);
   const s = boot.activeSession;
+  const secs = s ? elapsedSeconds() : 0;
+  const target = s ? blockMinutes(s, boot.preferences) : 0;
+  const face = s ? timerFace(secs, target) : null;
+  const shown = !s ? '' : face.done ? `+${fmtClock(face.over)}` : fmtClock(face.left);
+
+  // When the block ends while the timer runs, chime and offer 5 more minutes.
+  const lastSecs = useRef(null);
   useEffect(() => {
-    document.title = s ? `${fmtClock(elapsedSeconds())} ${s.taskTitle} | FocusFlow` : 'FocusFlow';
+    if (!s || s.status !== 'running') { lastSecs.current = null; return; }
+    const prev = lastSecs.current;
+    lastSecs.current = secs;
+    if (prev !== null && prev < target * 60 && secs >= target * 60) {
+      chime();
+      toast(`Focus block done: ${fmtMinutes(target)} on “${s.taskTitle}”`, {
+        description: 'Stop and save, or keep going. The timer keeps counting.',
+        duration: 12000,
+        action: target < FOCUS_MAX ? {
+          label: '+5 min',
+          onClick: () => mutate(() => api(`/api/sessions/${s.id}`, { method: 'PATCH', body: { targetMinutes: Math.min(FOCUS_MAX, target + 5) } })),
+        } : undefined,
+      });
+    }
+  });
+
+  useEffect(() => {
+    document.title = s ? `${face.done ? 'Done ' : ''}${shown} ${s.taskTitle} | FocusFlow` : 'FocusFlow';
   });
   if (!s) return null;
   const running = s.status === 'running';
   const toggle = () => mutate(() => api(`/api/sessions/${s.id}/${running ? 'pause' : 'resume'}`, { method: 'POST' }));
   return (
-    <div className={cn('flex min-w-0 items-center gap-1 rounded-full py-1 pr-1 pl-3', running ? 'bg-hl text-[#1d2b3a]' : 'bg-hl-soft text-foreground')}>
-      <a href="#focus" className="flex min-w-0 items-center gap-2 font-bold no-underline" aria-label={`${running ? 'Focusing on' : 'Paused:'} ${s.taskTitle}, ${fmtClock(elapsedSeconds())}. Open Focus.`}>
+    <div className={cn('flex min-w-0 items-center gap-1 rounded-full py-1 pr-1 pl-3', face.done ? 'bg-act-soft text-act-strong' : running ? 'bg-hl text-[#1d2b3a]' : 'bg-hl-soft text-foreground')}>
+      <a href="#focus" className="flex min-w-0 items-center gap-2 font-bold no-underline" aria-label={`${running ? 'Focusing on' : 'Paused:'} ${s.taskTitle}, ${face.done ? `block done, ${fmtClock(face.over)} over` : `${fmtClock(face.left)} left`}. Open Focus.`}>
         <span aria-hidden="true" className={cn('size-2 shrink-0 rounded-full bg-current', running && 'animate-pulse')} />
         <span className="hidden max-w-[16ch] truncate font-medium sm:inline">{s.taskTitle}</span>
-        <span className="font-mono tabular-nums">{fmtClock(elapsedSeconds())}</span>
+        <span className="font-mono tabular-nums">{shown}</span>
       </a>
       <button
         type="button"

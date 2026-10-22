@@ -137,3 +137,35 @@ test('journal titles are saved and can be edited', async () => {
   const edited = await handle('PATCH', `/api/journal/${e.id}`, { title: 'A smaller start, a better session', body: e.body, tags: e.tags, energy: e.energy });
   assert.equal(edited.title, 'A smaller start, a better session');
 });
+
+test('focus time with no task is saved under "Focus", with its own block length', async () => {
+  const { handle } = await import('../src/data/backend.js');
+  await handle('POST', '/api/demo/reset');
+  await handle('PUT', '/api/preferences', { focusMinutes: 25 });
+  const s = await handle('POST', '/api/sessions/start', { label: '  deep reading ' });
+  assert.equal(s.taskId, null);
+  assert.equal(s.taskTitle, 'Deep reading');
+  assert.equal(s.categorySnapshot, 'Focus');
+  assert.equal(s.targetMinutes, 25, 'uses the saved focus length');
+  const longer = await handle('PATCH', `/api/sessions/${s.id}`, { targetMinutes: 30 });
+  assert.equal(longer.targetMinutes, 30);
+  await assert.rejects(handle('PATCH', `/api/sessions/${s.id}`, { targetMinutes: 2 }), /between 5 and 240/);
+  await handle('POST', `/api/sessions/${s.id}/stop`, {});
+  const manual = await handle('POST', '/api/sessions/manual', { minutes: 40 });
+  assert.equal(manual.taskTitleSnapshot, 'Focus time');
+  assert.equal(manual.categorySnapshot, 'Focus');
+  const stats = await handle('GET', '/api/stats?range=day');
+  const focus = stats.byCategory.find((c) => c.category === 'Focus');
+  assert.ok(focus && focus.minutes >= 40, JSON.stringify(stats.byCategory));
+  assert.ok(stats.topTasks.some((t) => t.title === 'Focus time'));
+});
+
+test('a task session can use a chosen block length', async () => {
+  const { handle } = await import('../src/data/backend.js');
+  await handle('POST', '/api/demo/reset');
+  const t = await handle('POST', '/api/tasks', { title: 'Essay', estimateMinutes: 60, category: 'Homework' });
+  const s = await handle('POST', '/api/sessions/start', { taskId: t.id, targetMinutes: 90 });
+  assert.equal(s.targetMinutes, 90);
+  assert.equal(s.categorySnapshot, 'Homework');
+  await assert.rejects(handle('POST', '/api/sessions/start', { taskId: t.id }), /already active/);
+});

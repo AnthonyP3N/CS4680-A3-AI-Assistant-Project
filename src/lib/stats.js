@@ -58,7 +58,8 @@ export function computeStats(db, { range = 'week', date, tz, start: customStart,
     const task = taskById.get(s.taskId);
     const category = task?.category || s.categorySnapshot || 'Uncategorized';
     byCategoryMap[category] = (byCategoryMap[category] || 0) + secs;
-    const key = s.taskId || 'none';
+    // Focus time without a task is grouped by its label ("Focus time", "Reading"...).
+    const key = s.taskId || `focus:${s.taskTitleSnapshot || 'Focus time'}`;
     byTaskMap[key] = (byTaskMap[key] || 0) + secs;
   }
 
@@ -74,7 +75,7 @@ export function computeStats(db, { range = 'week', date, tz, start: customStart,
   const topTasks = Object.entries(byTaskMap)
     .map(([id, secs]) => ({
       taskId: id,
-      title: taskById.get(id)?.title || '(deleted task)',
+      title: taskById.get(id)?.title || (id.startsWith('focus:') ? id.slice(6) : '(deleted task)'),
       minutes: round1(secs / 60),
     }))
     .sort((a, b) => b.minutes - a.minutes)

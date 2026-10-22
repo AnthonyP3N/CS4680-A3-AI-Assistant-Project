@@ -49,8 +49,14 @@ export function CommandPalette({ open, onOpenChange }) {
           <CommandItem onSelect={run(() => { navigate('insights'); })}><SparklesIcon />Review this week</CommandItem>
           <CommandItem onSelect={run(openNewEntry)}><NotebookPenIcon />New journal entry</CommandItem>
         </CommandGroup>
-        {!boot.activeSession && open_.length > 0 && (
+        {!boot.activeSession && (
           <CommandGroup heading="Start a timer">
+            <CommandItem value="start focus time no task" onSelect={run(async () => {
+              const ok = await mutate(() => api('/api/sessions/start', { method: 'POST', body: {} }), { success: `Started a ${boot.preferences.focusMinutes || 45}-minute focus block` });
+              if (ok) navigate('focus');
+            })}>
+              <TimerIcon />Just focus (no task), {boot.preferences.focusMinutes || 45} min
+            </CommandItem>
             {open_.slice(0, 30).map((t) => (
               <CommandItem key={t.id} value={`start ${t.title}`} onSelect={startTimer(t)}>
                 <PlayIcon />{t.title}

@@ -5,6 +5,7 @@
 // Data lives in localStorage; AI calls go straight from the browser to the
 // provider the visitor chose, using the visitor's own API key.
 
+import { FOCUS_CATEGORY, focusMinutesOrNull, focusTitle } from '../lib/focus.js';
 import { emptyDb, looksLikeFocusFlowData, newId, normalizeDb } from '../lib/db.js';
 import { isDateStr, localDate, timeToMinutes } from '../lib/dates.js';
 import { actualMinutesByTask, computeStats, sessionSeconds } from '../lib/stats.js';
@@ -215,7 +216,7 @@ route('GET', '/api/bootstrap', () => {
     categories: db.categories,
     tasks: decorateTasks(db),
     activeSession: activeSession(db),
-    recentSessions: db.sessions.filter((s) => s.status === 'stopped').slice(-40).reverse(),
+    recentSessions: db.sessions.filter((s) => s.status === 'stopped').sort((a, b) => (b.endedAt || '').localeCompare(a.endedAt || '')).slice(0, 40),
     journal: [...db.journal].reverse().slice(0, 200),
     plans: [...db.plans].reverse(),
     schedules: db.schedules,
@@ -272,13 +273,31 @@ route('POST', '/api/sessions/start', (p, body) => {
     if (db.sessions.some((s) => s.status === 'running' || s.status === 'paused')) {
       throw new HttpError(409, 'A focus session is already active. Stop it before starting another.');
     }
-    const task = findOr404(db.tasks, body?.taskId, 'Task');
-    if (task.status === 'todo') task.status = 'in_progress';
-    db.sessions.push({
-      id: newId('ses'), taskId: task.id, taskTitleSnapshot: task.title, categorySnapshot: task.category,
-      status: 'running', source: 'timer', startedAt: now(), lastResumedAt: now(), accumulatedSeconds: 0,
-      endedAt: null, durationSeconds: null, note: '',
-    });
+    const target = body?.targetMinutes == null ? db.preferences.focusMinutes || 45 : focusMinutesOrNull(body.targetMinutes);
+    if (target === null) throw new HttpError(400, 'Focus length must be a whole number between 5 and 240 minutes.');
+    const base = {
+      id: newId('ses'), status: 'running', source: 'timer', startedAt: now(), lastResumedAt: now(), accumulatedSeconds: 0,
+      endedAt: null, durationSeconds: null, note: '', targetMinutes: target,
+    };
+    if (body?.taskId) {
+      const task = findOr404(db.tasks, body.taskId, 'Task');
+      if (task.status === 'todo') task.status = 'in_progress';
+      db.sessions.push({ ...base, taskId: task.id, taskTitleSnapshot: task.title, categorySnapshot: task.category });
+    } else {
+      // Focus time with no task: counted under the "Focus" category.
+      db.sessions.push({ ...base, taskId: null, taskTitleSnapshot: focusTitle(body?.label), categorySnapshot: FOCUS_CATEGORY });
+    }
+  });
+  return activeSession(store.db);
+});
+
+// Change the block length of the running session (e.g. "+5 min").
+route('PATCH', '/api/sessions/:id', (p, body) => {
+  const target = focusMinutesOrNull(body?.targetMinutes);
+  if (target === null) throw new HttpError(400, 'Focus length must be a whole number between 5 and 240 minutes.');
+  sessionAction(p.id, (s) => {
+    if (s.status === 'stopped') throw new HttpError(409, 'Session already stopped.');
+    s.targetMinutes = target;
   });
   return activeSession(store.db);
 });
@@ -339,17 +358,20 @@ route('POST', '/api/sessions/manual', (p, body) => {
   const endedAt = body?.endedAt ? new Date(body.endedAt) : new Date();
   if (Number.isNaN(endedAt.getTime()) || endedAt.getTime() > Date.now() + 60_000) throw new HttpError(400, 'End time must be a valid time that is not in the future.');
   return store.update((db) => {
-    const task = findOr404(db.tasks, body?.taskId, 'Task');
-    if (task.status === 'todo') task.status = 'in_progress';
+    const task = body?.taskId ? findOr404(db.tasks, body.taskId, 'Task') : null;
+    if (task?.status === 'todo') task.status = 'in_progress';
     const s = {
-      id: newId('ses'), taskId: task.id, taskTitleSnapshot: task.title, categorySnapshot: task.category,
+      id: newId('ses'),
+      ...(task
+        ? { taskId: task.id, taskTitleSnapshot: task.title, categorySnapshot: task.category }
+        : { taskId: null, taskTitleSnapshot: focusTitle(body?.label), categorySnapshot: FOCUS_CATEGORY }),
       status: 'stopped', source: 'manual',
       startedAt: new Date(endedAt.getTime() - minutes * 60_000).toISOString(), endedAt: endedAt.toISOString(),
       accumulatedSeconds: minutes * 60, durationSeconds: minutes * 60, lastResumedAt: null,
       note: typeof body?.note === 'string' ? body.note.slice(0, 500) : '',
     };
     db.sessions.push(s);
-    if (body?.completeTask) { task.status = 'done'; task.completedAt = now(); }
+    if (body?.completeTask && task) { task.status = 'done'; task.completedAt = now(); }
     return s;
   });
 });

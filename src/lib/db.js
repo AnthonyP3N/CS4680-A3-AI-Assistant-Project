@@ -11,6 +11,7 @@ export const DEFAULT_PREFERENCES = Object.freeze({
   breakEveryMinutes: 45,
   breakMinutes: 10,
   reflectAfterSession: true,
+  focusMinutes: 45,
 });
 
 export { DEFAULT_CATEGORIES };

@@ -108,6 +108,7 @@ export function SettingsDialog({ open, section, onOpenChange }) {
       availableMinutes: Number(prefs.availableMinutes),
       breakEveryMinutes: Number(prefs.breakEveryMinutes),
       breakMinutes: Number(prefs.breakMinutes),
+      focusMinutes: Number(prefs.focusMinutes),
       reflectAfterSession: !!prefs.reflectAfterSession,
     };
     const ok = await mutate(() => api('/api/preferences', { method: 'PUT', body }), {
@@ -199,12 +200,13 @@ export function SettingsDialog({ open, section, onOpenChange }) {
 
           <Separator />
 
-          <Section id="settings-planning" title="Planning defaults" description="Used when the coach plans your day.">
+          <Section id="settings-planning" title="Planning and focus" description="Used when the coach plans your day, and by the focus timer.">
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-2"><Label htmlFor="p-start">Usual start time</Label><Input id="p-start" type="time" required value={prefs.dayStart} onChange={setP('dayStart')} /></div>
               <div className="flex flex-col gap-2"><Label htmlFor="p-avail">Time per day (min)</Label><Input id="p-avail" type="number" min={15} max={960} step={15} required value={prefs.availableMinutes} onChange={setP('availableMinutes')} /></div>
               <div className="flex flex-col gap-2"><Label htmlFor="p-every">Break every (min)</Label><Input id="p-every" type="number" min={15} max={180} step={5} required value={prefs.breakEveryMinutes} onChange={setP('breakEveryMinutes')} /></div>
               <div className="flex flex-col gap-2"><Label htmlFor="p-break">Break length (min)</Label><Input id="p-break" type="number" min={0} max={60} step={5} required value={prefs.breakMinutes} onChange={setP('breakMinutes')} /></div>
+              <div className="flex flex-col gap-2"><Label htmlFor="p-focus">Focus block (min)</Label><Input id="p-focus" type="number" min={5} max={240} step={5} required value={prefs.focusMinutes ?? 45} onChange={setP('focusMinutes')} /></div>
             </div>
             <p className="text-sm text-muted-foreground">Time zone: {prefs.timezone}</p>
           </Section>

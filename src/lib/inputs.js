@@ -125,6 +125,11 @@ export function validatePreferences(body = {}) {
     if (n === null) return { error: 'Break interval must be between 15 and 180 minutes.' };
     out.breakEveryMinutes = n;
   }
+  if (body.focusMinutes !== undefined) {
+    const n = intIn(body.focusMinutes, 5, 240);
+    if (n === null) return { error: 'Focus length must be between 5 and 240 minutes.' };
+    out.focusMinutes = n;
+  }
   if (body.reflectAfterSession !== undefined) {
     if (typeof body.reflectAfterSession !== 'boolean') return { error: 'Invalid reflection setting.' };
     out.reflectAfterSession = body.reflectAfterSession;

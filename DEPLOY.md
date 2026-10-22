@@ -111,7 +111,7 @@ Needs Node.js 20.19 or newer.
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm test           # 44 tests
+npm test           # 46 tests
 npm run build      # builds dist/, exactly what GitHub Pages publishes
 npm run preview    # serves dist/ so you can check the build
 ```
