@@ -1,0 +1,187 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* FocusFlow follows the system theme. */
+@custom-variant dark (@media (prefers-color-scheme: dark));
+
+/*
+  A ruled-notebook planner. Navy ink on cool paper.
+  - Highlighter yellow (--hl) means "now": the running timer, the current block, the current page.
+  - Teal (--act) means time you actually tracked.
+  - Violet (--ai) means "the AI suggested this". Nothing else uses it.
+  - A gray "Calculated" label means FocusFlow computed it in code.
+*/
+:root {
+  color-scheme: light;
+  --radius: 0.625rem;
+
+  --background: #f3f6f9;
+  --foreground: #1d2b3a;
+  --card: #ffffff;
+  --card-foreground: #1d2b3a;
+  --popover: #ffffff;
+  --popover-foreground: #1d2b3a;
+  --primary: #1d2b3a;
+  --primary-foreground: #ffffff;
+  --secondary: #eaf0f5;
+  --secondary-foreground: #1d2b3a;
+  --muted: #eaf0f5;
+  --muted-foreground: #5b6b7d;
+  --accent: #eaf0f5;
+  --accent-foreground: #1d2b3a;
+  --destructive: #b42318;
+  --border: #dfe7ef;
+  --input: #c4d0dc;
+  --ring: #2f6fd6;
+
+  --ink-2: #44566a;
+  --rule-strong: #8fb3d9;
+  --hl: #f2c94c;
+  --hl-soft: #fcefc2;
+  --act: #008a76;
+  --act-strong: #00715f;
+  --act-soft: #d4efe9;
+  --ai: #5b4fc4;
+  --ai-soft: #f3f1fc;
+  --warn: #8a5a00;
+  --warn-soft: #fff4d6;
+  --danger-soft: #fde8e6;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --background: #0f1720;
+    --foreground: #e6edf3;
+    --card: #16212c;
+    --card-foreground: #e6edf3;
+    --popover: #1a2633;
+    --popover-foreground: #e6edf3;
+    --primary: #e6edf3;
+    --primary-foreground: #0f1720;
+    --secondary: #1f2c39;
+    --secondary-foreground: #e6edf3;
+    --muted: #1f2c39;
+    --muted-foreground: #9aa9b8;
+    --accent: #23323f;
+    --accent-foreground: #e6edf3;
+    --destructive: #f47066;
+    --border: #263544;
+    --input: #3a4d60;
+    --ring: #7aa7f0;
+
+    --ink-2: #b6c3d0;
+    --rule-strong: #4f7aa6;
+    --hl: #e2bc45;
+    --hl-soft: #3d3418;
+    --act: #14a892;
+    --act-strong: #3cc4ad;
+    --act-soft: #11352f;
+    --ai: #a99cf5;
+    --ai-soft: #221f3d;
+    --warn: #f0c060;
+    --warn-soft: #34290f;
+    --danger-soft: #3a1714;
+  }
+}
+
+@theme inline {
+  --font-sans: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Atkinson Hyperlegible Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 6px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-ink-2: var(--ink-2);
+  --color-rule-strong: var(--rule-strong);
+  --color-hl: var(--hl);
+  --color-hl-soft: var(--hl-soft);
+  --color-act: var(--act);
+  --color-act-strong: var(--act-strong);
+  --color-act-soft: var(--act-soft);
+  --color-ai: var(--ai);
+  --color-ai-soft: var(--ai-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-danger-soft: var(--danger-soft);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  :focus-visible {
+    outline: 3px solid var(--ring);
+    outline-offset: 2px;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+@layer components {
+  /* Lined-paper writing surface for the journal. */
+  .ruled {
+    line-height: 28px;
+    background-image: repeating-linear-gradient(transparent 0 27px, var(--border) 27px 28px);
+    background-attachment: local;
+    background-position: 0 6px;
+  }
+  .ruled-lg {
+    line-height: 32px;
+    background-image: repeating-linear-gradient(transparent 0 31px, var(--border) 31px 32px);
+    background-attachment: local;
+    background-position: 0 8px;
+  }
+  /* Break blocks: hatched, so they never read as work. */
+  .hatched {
+    background-image: repeating-linear-gradient(135deg, var(--muted) 0 6px, var(--card) 6px 12px);
+  }
+  /* The current page in navigation gets a highlighter stroke. */
+  .hl-stroke {
+    background: linear-gradient(transparent 58%, var(--hl) 58%, var(--hl) 92%, transparent 92%);
+  }
+  @media (prefers-color-scheme: dark) {
+    .hl-stroke {
+      background: linear-gradient(transparent 82%, var(--hl) 82%, var(--hl) 96%, transparent 96%);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

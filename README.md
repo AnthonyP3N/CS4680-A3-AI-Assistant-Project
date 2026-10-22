@@ -4,9 +4,9 @@
 
 CS4680 Prompt Engineering, AI Assistant Project.
 
-**Live app:** `https://YOUR-USERNAME.github.io/focusflow/` (see [DEPLOY.md](DEPLOY.md) to publish your own copy)
+**Live app:** https://anthonyp3n.github.io/CS4680-A3-AI-Assistant-Project/
 
-![Today view with an accepted plan](docs/screenshots/today.png)
+![Today: tasks grouped by due date, and an AI day plan waiting for approval](docs/screenshots/plan.png)
 
 ## The problem
 
@@ -14,41 +14,37 @@ Students plan their days without knowing how long things actually take. A "one-h
 
 FocusFlow closes it: **plan → track → reflect → understand → improve.**
 
-1. Add tasks with deadlines and a time estimate.
+1. Type a task the way you'd say it: `Physics lab report 90m fri high`.
 2. Track real time with a focus timer (or log it by hand).
-3. Write a short private reflection.
-4. See planned versus actual time on a transparent dashboard.
-5. Ask the AI coach for a realistic plan or a review of your week. You approve every change.
+3. Answer a 10-second check-in when you stop: energy, what happened, one line.
+4. See planned versus actual time on a dashboard where every number is calculated by code.
+5. Ask the AI for a realistic plan, a review of your week, or steps for a big task. You approve every change, and you can undo it.
 
-## Features
+## What's on each page
 
-| Area | What it does |
+| Page | What it does |
 |---|---|
-| **Today** | Quick task entry, filters, subtasks, and a timeline of the accepted plan with the current block highlighted. |
-| **Focus** | Start, pause, resume, stop. Survives refresh and network loss (time is computed from timestamps). Log time by hand if you forgot to start it. |
-| **Journal** | Private entries with tags. Never sent to the AI unless you tick "Include my journal" for a review. Export or delete at any time. |
-| **Insights** | Day, week and month views: focused time, completion rate, estimate accuracy, time by category, and an estimate-versus-reality ledger. Every figure explains its formula. |
-| **Coach** | Three AI actions: **Plan a day**, **Review a period**, **Break down a task**. Results are editable and nothing is saved until you accept. |
+| **Today** | Quick add that understands `45m`, `2h`, `today`/`fri`, `high`/`low` and `#category`, with a live preview of what it understood. Tasks grouped into Overdue, Due today, This week and Later. **Plan the rest of my day** sends your open tasks to the AI and shows a timeline you accept block by block. **Split into steps** breaks a big task into subtasks. |
+| **Focus** | Start, pause, resume, stop. The timer survives refresh (time comes from timestamps) and shows in the header and tab title on every page. Log time by hand if you forgot to start it. |
+| **Journal** | Prompts to get started, energy (low / OK / high) and tags (win, stuck, distraction, idea), an autosaved draft, a full-screen writing mode, word count, search with highlighted excerpts, filters, and inline editing. Entries up to 10,000 characters (about 1,500 words); long ones fold to a preview. |
+| **Insights** | Day, week and month: focused time, completion rate and estimate accuracy (with change from the last period), a day-by-day chart with a table view, time by category, and an estimate-versus-reality ledger. **Write my review** asks the AI for patterns and two suggestions you can add as tasks. |
+| **AI history** | Every AI request: what was sent, what came back, how it was checked, tokens used, and what you decided. |
 
-![Coach plan with editable blocks and the check log](docs/screenshots/coach-plan.png)
+![Journal: prompts, energy and tags, and a privacy line saying what the AI can see](docs/screenshots/journal.png)
 
-## Quick start
+Small things that make it easier to use every day:
 
-FocusFlow is a static web app: everything runs in the browser, so there is no server to set up and no backend bill.
+- **Undo** on every change (8-second toast), instead of "are you sure?" dialogs.
+- **Ctrl K / ⌘K** opens search and commands: jump to a page, start a timer, add a task, plan the day. **N** adds a task from anywhere.
+- After **Stop and save**, a short check-in sheet asks how it went. It can be turned off in Settings.
+- Two labels tell you where any piece of information came from: a violet **AI suggestion** badge for model output, and a gray **Calculated** badge for numbers computed by code.
+- Phone layout with bottom tabs, light and dark themes, keyboard focus outlines, and reduced motion support.
 
-- **Use it online:** open the published GitHub Pages link above. To publish your own copy, follow [DEPLOY.md](DEPLOY.md).
-- **Run it on your computer** (Node.js 18.17 or newer):
+## Bring your own AI key
 
-  ```bash
-  npm install
-  npm start          # http://localhost:3000
-  ```
+Each person uses their own key, so nobody is billed for anyone else's usage. The first visit opens a 3-step guided setup; you can also use **Settings → AI coach** at any time.
 
-To try it with realistic data, click **Load a sample week instead** on the empty Today page, or use **Settings → Replace with sample week**.
-
-### Bring your own AI key
-
-Each person uses their own key, so nobody is billed for anyone else's usage. Open **Settings**, choose a provider, paste a key, click **Test connection**, then **Save settings**.
+![Guided setup: choose a provider, paste a key, test it](docs/screenshots/setup.png)
 
 | Provider | Get a key | Default model | Cost |
 |---|---|---|---|
@@ -56,15 +52,27 @@ Each person uses their own key, so nobody is billed for anyone else's usage. Ope
 | OpenAI | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) | `gpt-5-mini` | Pay as you go |
 | Anthropic Claude | [console.anthropic.com](https://console.anthropic.com/settings/keys) | `claude-haiku-5-5` | Pay as you go |
 
-The key is saved only in that browser (localStorage), sent directly from the browser to the chosen provider, and never included in data exports. **Remove key** deletes it. Model names change often; if a provider says the model wasn't found, type a current one into **Model (optional)**. No SDKs are used; each provider is a small `fetch` adapter in `public/js/lib/providers.js`.
+The key is saved only in that browser (localStorage), sent directly from the browser to the chosen provider, and never included in data exports. **Remove key** deletes it. Model names change often; if a provider says the model wasn't found, type a current one into **Model**. No SDKs are used; each provider is a small `fetch` adapter in `src/lib/providers.js`.
 
-**Demo mode.** Without a key, the coach runs offline rules that return the same JSON shapes and go through the same validators. The UI labels this clearly as *not* an AI model. It lets anyone click through the whole app, and it keeps a live demo working if the Wi-Fi fails.
+**Demo mode.** Without a key, FocusFlow uses built-in rules that return the same JSON shapes and pass through the same checks. Every result is labeled "Demo suggestion" with a note that it isn't an AI model. Anyone can click through the whole app, and a live demo still works if the Wi-Fi fails.
+
+## How the AI is used, step by step
+
+Each AI action shows a live 5-step progress strip, driven by real events from the request:
+
+1. **You asked**: nothing is sent until you click.
+2. **Sent your tasks and totals**: before you click, **See the exact data** shows the JSON that will go out.
+3. **Gemini drafted** (or OpenAI, Claude, or Demo rules).
+4. **FocusFlow checked it**: if the draft breaks a rule, it shows "sent back 1×" while the model revises.
+5. **Your call**: tick the blocks or steps you want, then accept. Undo is one click away.
+
+![Insights: calculated numbers next to an AI review](docs/screenshots/insights.png)
 
 ## Prompt engineering
 
-The core design rule: **the model handles judgment and language; code handles facts and arithmetic.** Every number the AI sees is computed in `stats.js`, and every answer it gives is checked in `validate.js` (both in `public/js/lib/`).
+The core design rule: **the model handles judgment and language; code handles facts and arithmetic.** Every number the AI sees is computed in `src/lib/stats.js`, and every answer is checked in `src/lib/validate.js`.
 
-### 1. Persona (`public/js/lib/prompts.js`, `PERSONA`)
+### 1. Persona (`src/lib/prompts.js`, `PERSONA`)
 
 All three actions share one system prompt that defines *FocusFlow Coach*: calm, practical, realistic over ambitious. The persona also carries the boundaries:
 
@@ -73,7 +81,7 @@ All three actions share one system prompt that defines *FocusFlow Coach*: calm, 
 - Describe "observed patterns", never character traits. No diagnosis, no moral judgment about productivity.
 - Return one JSON object, with short user-facing reasons instead of hidden reasoning.
 
-Why it helps: the same voice and the same rules apply everywhere, so a review never sounds like a lecture and a plan never pretends to know your calendar.
+Why it helps: the same voice and rules apply everywhere, so a review never sounds like a lecture and a plan never pretends to know your calendar.
 
 ### 2. Few-shot examples (`planMessages`, `reviewMessages`, `breakdownMessages`)
 
@@ -85,7 +93,7 @@ Each request is sent as a short conversation: the rules and schema, a **complete
 
 The test suite proves each example passes the same validators the model must pass (`test/validate.test.js`), so the examples never teach a rule violation.
 
-### 3. Iterative refinement (`public/js/lib/ai.js`, `runWithRefinement`)
+### 3. Iterative refinement (`src/lib/ai.js`, `runWithRefinement`)
 
 ```
 draft → validate in code → problems?  ── no ──→ show to user
@@ -117,43 +125,56 @@ Your draft did not pass FocusFlow's checks:
 Revise the draft to fix every item above. Keep the parts that already passed...
 ```
 
-The UI shows this as **"How this was checked"** on every result, so users (and graders) can see the draft, the problems found, and the revision that passed.
+Every result has a **Checked by FocusFlow** section showing each draft, the problems found, and the revision that passed. AI history keeps it for every request.
 
 ### Trust and privacy safeguards
 
-- The AI recommends; the user accepts, edits, or rejects each block or step. Plans are versioned.
-- **"What the coach saw"** shows the exact JSON sent with each request.
-- Journal text is sent only on explicit opt-in, capped at 12 entries × 400 characters.
+- The AI recommends; you accept, edit, or reject each block or step, and every change can be undone.
+- **See the exact data** shows the JSON before you send it; AI history keeps a copy afterwards.
+- Journal text is sent only when you tick **Include my journal** on a review: only that period's entries (at most 12), each cut to its first 400 characters. The Journal page shows when it was last shared.
 - User free text is length-limited and passed as data inside the JSON input.
 - Timeouts, one retry on rate limits and server errors, and readable error messages (bad key, unknown model, quota).
-- Each AI request logs provider, rounds, latency and pass/fail as one line in the browser console.
 
 ## How it is built
 
-```
-public/                  The whole app. GitHub Pages publishes this folder.
-  index.html, styles.css
-  js/
-    app.js               Routing, settings, import/export
-    api.js               The views' request function
-    backend.js           The app's "server", running in the browser:
-                         same routes as a REST API, data in localStorage
-    views/               today, focus, journal, insights, coach
-    lib/
-      stats.js           All dashboard math (deterministic)
-      prompts.js         Persona, few-shot examples, refinement message
-      validate.js        Output checks, plan repair, grounding check
-      ai.js              Input building, refinement loop, metrics
-      providers.js       Gemini / OpenAI / Anthropic adapters (fetch only)
-      demoAI.js          Offline demo-mode rules
-      db.js, seed.js     Data shape and sample data
-server.js                Local preview server for npm start (static files only)
-test/                    23 tests: stats, validators, refinement loop with a
-                         fake LLM, and the in-browser backend
-.github/workflows/       Tests, then publishes public/ to GitHub Pages
-```
+React 19, Vite, Tailwind CSS v4 and [shadcn/ui](https://ui.shadcn.com) components (Radix primitives), with lucide icons, sonner toasts, cmdk for the command palette and Recharts for the Insights chart (loaded only when Insights opens). Everything runs in the browser, so there is no server and no backend bill.
 
-The views call routes like `POST /api/tasks` through `backend.js`, which keeps the app structured like a client and server even though both run in the browser. Saves are all-or-nothing: if a change fails validation, nothing is written. Several open tabs stay in sync.
+```
+src/
+  main.jsx, App.jsx        Entry, hash routes (#today, #focus, #journal, ...)
+  index.css                Design tokens (light and dark) and Tailwind setup
+  components/ui/           shadcn/ui components: button, dialog, sheet, select, ...
+  components/ai.jsx        Shared AI pieces: badges, live pipeline, check log,
+                           "what will be sent" preview, token note
+  components/layout/       App shell: sidebar, header, timer pill, mobile tabs
+  features/
+    today/                 Quick add, task list, split into steps, plan panel
+    focus/                 Timer, log time, check-in sheet after a session
+    journal/               Composer, entries (search, filters, edit)
+    insights/              Tiles, chart, ledger, AI review
+    history/               AI request log
+    settings/, setup/      AI key settings and first-run guided setup
+    command/               Ctrl K command palette
+  state/                   App data context with undo, UI context
+  data/
+    backend.js             The app's "server", running in the browser: REST-style
+                           routes, data in localStorage, all-or-nothing saves,
+                           undo snapshots, sync across open tabs
+    api.js                 The function components use to call those routes
+  lib/
+    stats.js               All dashboard math (deterministic)
+    prompts.js             Persona, few-shot examples, refinement message
+    validate.js            Output checks, plan repair, grounding check
+    ai.js                  Input building, refinement loop, progress events
+    providers.js           Gemini / OpenAI / Anthropic adapters (fetch only)
+    demoAI.js              Demo-mode rules
+    quickadd.js            Parses "Lab report 90m fri high #physics"
+    inputs.js, text.js     Input limits and journal word counts
+    db.js, seed.js         Data shape, upgrades and sample data
+test/                      35 tests: stats, validators, refinement loop with a
+                           fake model, quick add, journal limits, the backend
+.github/workflows/         Tests, builds, then publishes dist/ to GitHub Pages
+```
 
 **Metrics, defined:**
 
@@ -161,20 +182,34 @@ The views call routes like `POST /api/tasks` through `backend.js`, which keeps t
 - *Completion rate*: completed tasks ÷ tasks due in the period or finished in it.
 - *Estimate accuracy*: per task, smaller of (estimate, actual) ÷ larger, averaged over finished tasks with tracked time. 100% is a perfect estimate.
 
-## Scripts
+## Run it on your computer
+
+Needs Node.js 20.19 or newer.
+
+```bash
+npm install
+npm run dev        # http://localhost:5173, reloads as you edit
+```
 
 | Command | What it does |
 |---|---|
-| `npm start` | Serve the app at http://localhost:3000 |
-| `npm run dev` | Same, restarting on file changes |
-| `npm test` | Run the test suite |
+| `npm run dev` | Development server at http://localhost:5173 |
+| `npm test` | Run the 35 tests |
+| `npm run build` | Build the site into `dist/` |
+| `npm run preview` | Serve the built `dist/` to check it before publishing |
 
-Your data lives in your browser. **Settings → Export my data** downloads a backup file and **Import a backup** restores it, on any browser or computer.
+To try it with realistic data, click **Load a sample week instead** on the empty Today page, or **Settings → Replace with sample week** (undo is offered).
+
+Your data lives in your browser. **Settings → Export my data** downloads a backup file and **Import a backup** restores it, on any browser or computer. The API key is never in the backup.
+
+## Publishing
+
+Pushing to `main` runs the tests, builds the site and publishes it to GitHub Pages. See [DEPLOY.md](DEPLOY.md).
 
 ## Roadmap
 
-Optional sync across devices, recurring tasks and reminders, calendar import/export, monthly trend reports, an offline-first mobile timer, optional energy tracking, and user-selectable coaching styles (a natural extension of the persona pattern).
+Optional sync across devices, recurring tasks and reminders, calendar import/export, monthly trend reports, and user-selectable coaching styles (a natural extension of the persona pattern).
 
 ## Presenting
 
-See [DEMO.md](DEMO.md) for the live demo script and the short-video storyboard, and [DEPLOY.md](DEPLOY.md) for publishing.
+See [DEMO.md](DEMO.md) for the live demo script and the short-video storyboard.

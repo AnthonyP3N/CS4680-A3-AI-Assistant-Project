@@ -11,7 +11,7 @@ class MemoryStorage {
 }
 globalThis.localStorage = new MemoryStorage();
 
-const backend = await import('../public/js/backend.js');
+const backend = await import('../src/data/backend.js');
 const { handle, getAiSettings, saveAiSettings, clearAiSettings } = backend;
 
 const post = (path, body) => handle('POST', path, body ?? {});
@@ -87,4 +87,44 @@ test('export then import restores the data; other files are rejected', async () 
 
   await assert.rejects(post('/api/import', { data: { hello: 'world' } }), /isn’t a FocusFlow export/);
   assert.equal((await handle('GET', '/api/bootstrap')).tasks.length, backup.tasks.length);
+});
+
+test('a long journal entry round-trips; the AI only gets the first 400 characters', async () => {
+  const { readFileSync } = await import('node:fs');
+  const long = readFileSync(new URL('./fixtures/long-entry.txt', import.meta.url), 'utf8');
+  const saved = await post('/api/journal', { body: long, tags: ['reflection'] });
+  assert.equal(saved.body, long.trim());
+  await assert.rejects(post('/api/journal', { body: long + long }), /too long to save/);
+
+  const { buildReviewInput } = await import('../src/lib/ai.js');
+  const boot = await handle('GET', '/api/bootstrap');
+  const { input } = buildReviewInput(backend.store.db, { range: 'day', date: boot.today, includeJournal: true });
+  assert.equal(input.journal[0].text.length, 400);
+});
+
+test('older data (energy stored as tags) is upgraded on import, and journal entries can be edited', async () => {
+  const legacy = {
+    tasks: [], sessions: [], plans: [], schedules: {},
+    journal: [{ id: 'jrn_old', body: 'Tired after work.', tags: ['energy-low', 'reflection'], taskId: null, createdAt: new Date().toISOString() }],
+  };
+  await post('/api/import', { data: legacy });
+  const boot = await handle('GET', '/api/bootstrap');
+  assert.equal(boot.journal[0].energy, 'low');
+  assert.deepEqual(boot.journal[0].tags, ['reflection']);
+
+  const edited = await handle('PATCH', '/api/journal/jrn_old', { body: 'Tired after my shift.', tags: ['stuck'], energy: 'ok' });
+  assert.equal(edited.body, 'Tired after my shift.');
+  assert.equal(edited.energy, 'ok');
+
+  const checkIn = await post('/api/journal', { body: '', energy: 'high', tags: [] });
+  assert.equal(checkIn.energy, 'high', 'a quick check-in can be energy only');
+  await assert.rejects(post('/api/journal', { body: '  ' }), /Write something, or pick/);
+});
+
+test('undo snapshots restore everything', async () => {
+  const before = backend.snapshot();
+  await post('/api/tasks', { title: 'Temporary' });
+  assert.equal((await handle('GET', '/api/bootstrap')).tasks.length, before.tasks.length + 1);
+  backend.restore(before);
+  assert.equal((await handle('GET', '/api/bootstrap')).tasks.length, before.tasks.length);
 });

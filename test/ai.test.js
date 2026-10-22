@@ -2,10 +2,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildSampleDb } from '../public/js/lib/seed.js';
-import { generatePlan, generateReview } from '../public/js/lib/ai.js';
-import { resolveProvider } from '../public/js/lib/providers.js';
-import { validatePlan } from '../public/js/lib/validate.js';
+import { buildSampleDb } from '../src/lib/seed.js';
+import { generatePlan, generateReview } from '../src/lib/ai.js';
+import { resolveProvider } from '../src/lib/providers.js';
+import { validatePlan } from '../src/lib/validate.js';
 
 const TODAY = '2026-10-21';
 const realFetch = globalThis.fetch;
