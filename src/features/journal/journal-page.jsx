@@ -1,21 +1,28 @@
-// Journal: entries on the left, the selected entry in a reading pane, and the
-// new-entry composer below it. On narrower screens the list comes after the
-// composer and an entry opens in a sheet.
+// Journal: the main area shows either the entry you're reading or the New
+// entry form, never both. Entries sit in a panel on the right that can be
+// hidden; on narrower screens they open as a side sheet.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowRightIcon, PenLineIcon, SparklesIcon } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowRightIcon, ListIcon, PanelRightCloseIcon, PanelRightOpenIcon, PenLineIcon, SparklesIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/misc';
 import { PageHeader } from '@/components/layout/app-shell';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { addDays } from '@/lib/dates';
 import { fmtDateShort, localDateOf } from '@/lib/format';
-import { entryTitle } from '@/lib/journal-meta';
 import { cn } from '@/lib/utils';
-import { taskById, useApp } from '@/state/app';
-import { Composer } from './composer';
+import { useApp } from '@/state/app';
+import { hasNewEntryRequest, takeNewEntryRequest } from '@/state/ui';
+import { Composer, hasSavedDraft } from './composer';
 import { EntryList, matchesFilter, matchesQuery } from './entry-list';
 import { Reader } from './reader';
+
+const PANEL_KEY = 'focusflow:journal-entries-panel';
+
+function loadPanelOpen() {
+  try { return localStorage.getItem(PANEL_KEY) !== '0'; } catch { return true; }
+}
 
 /** Says whether the journal has ever gone to an AI, and links to a review. */
 function Perspective() {
@@ -45,29 +52,29 @@ export function JournalPage() {
   const { boot } = useApp();
   const wide = useMediaQuery('(min-width: 1280px)');
   const composerRef = useRef(null);
+  const all = boot.journal; // newest first
+
+  // Start on New entry when asked to, when a draft is waiting, or when there's nothing to read yet.
+  const [view, setView] = useState(() => (hasNewEntryRequest() || hasSavedDraft() || !boot.journal.length ? 'write' : 'read'));
+  const [panelOpen, setPanelOpen] = useState(loadPanelOpen);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('all');
   const [sort, setSort] = useState('new');
   const [selectedId, setSelectedId] = useState(null);
-  const [sheetOpen, setSheetOpen] = useState(false);
   const tz = boot.preferences.timezone;
 
-  const all = boot.journal; // newest first
   const q = query.trim();
   const shown = useMemo(() => {
     const list = all.filter((e) => matchesFilter(e, filter) && matchesQuery(e, q, boot));
     return sort === 'new' ? list : [...list].reverse();
   }, [all, filter, q, sort, boot]);
 
-  // Keep a sensible entry selected as the list changes.
-  const selected = shown.find((e) => e.id === selectedId) || shown[0] || null;
-  useEffect(() => {
-    if (!sheetOpen) return;
-    if (!all.some((e) => e.id === selectedId)) setSheetOpen(false);
-  }, [all, selectedId, sheetOpen]);
-
-  // Older and newer neighbours, by date, among the entries shown.
-  const byDate = sort === 'new' ? shown : [...shown].reverse();
+  // The entry being read: the one you picked, else the first in the list.
+  const selected = all.find((e) => e.id === selectedId) || shown[0] || all[0] || null;
+  // Older and newer neighbours by date, among the entries in the list.
+  const pool = selected && shown.some((e) => e.id === selected.id) ? shown : all;
+  const byDate = sort === 'new' || pool === all ? pool : [...pool].reverse();
   const at = selected ? byDate.findIndex((e) => e.id === selected.id) : -1;
   const older = at >= 0 ? byDate[at + 1] : null;
   const newer = at > 0 ? byDate[at - 1] : null;
@@ -75,12 +82,59 @@ export function JournalPage() {
   const days = Array.from({ length: 7 }, (_, i) => addDays(boot.today, i - 6));
   const reflectedDays = new Set(all.map((j) => localDateOf(j.createdAt, tz)).filter((d) => d >= days[0])).size;
 
-  const select = (id) => {
-    setSelectedId(id);
-    if (!wide) setSheetOpen(true);
+  const togglePanel = () => {
+    setPanelOpen((o) => {
+      try { localStorage.setItem(PANEL_KEY, o ? '0' : '1'); } catch { /* remembered for this visit only */ }
+      return !o;
+    });
   };
 
-  const sheetEntry = sheetOpen ? all.find((e) => e.id === selectedId) : null;
+  const focusReader = (id) => setTimeout(() => document.getElementById(`rh-${id}`)?.focus(), 60);
+
+  const openEntry = (id) => {
+    setSelectedId(id);
+    setView('read');
+    setSheetOpen(false);
+    focusReader(id);
+  };
+
+  const startNew = useCallback(() => {
+    setView('write');
+    setSheetOpen(false);
+    setTimeout(() => composerRef.current?.focus(), 60);
+  }, []);
+
+  // "New journal entry" from the command palette while already on this page.
+  useEffect(() => {
+    const on = () => { takeNewEntryRequest(); startNew(); };
+    window.addEventListener('focusflow:new-entry', on);
+    return () => window.removeEventListener('focusflow:new-entry', on);
+  }, [startNew]);
+
+  // Focus the title when the page opens straight into New entry.
+  useEffect(() => {
+    takeNewEntryRequest();
+    if (view === 'write') setTimeout(() => composerRef.current?.focus(), 60);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const list = (
+    <EntryList
+      entries={shown}
+      total={all.length}
+      selectedId={view === 'read' ? selected?.id : null}
+      onSelect={openEntry}
+      query={query}
+      setQuery={setQuery}
+      filter={filter}
+      setFilter={setFilter}
+      sort={sort}
+      setSort={setSort}
+      className="min-h-0 flex-1"
+    />
+  );
+
+  const showPanel = wide && panelOpen;
 
   return (
     <>
@@ -93,50 +147,85 @@ export function JournalPage() {
           </>
         )}
       >
-        <Button onClick={() => composerRef.current?.focus()}><PenLineIcon aria-hidden="true" />New entry</Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {wide ? (
+            !panelOpen && (
+              <Button variant="outline" onClick={togglePanel} aria-expanded={false} aria-controls="entries-panel">
+                <PanelRightOpenIcon aria-hidden="true" />Show entries
+                <span className="font-medium text-muted-foreground tabular-nums">{all.length}</span>
+              </Button>
+            )
+          ) : (
+            <Button variant="outline" onClick={() => setSheetOpen(true)} aria-haspopup="dialog">
+              <ListIcon aria-hidden="true" />Entries
+              <span className="font-medium text-muted-foreground tabular-nums">{all.length}</span>
+            </Button>
+          )}
+          <Button onClick={startNew} aria-pressed={view === 'write'}><PenLineIcon aria-hidden="true" />New entry</Button>
+        </div>
       </PageHeader>
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(280px,330px)_minmax(0,1fr)]">
-        <EntryList
-          entries={shown}
-          total={all.length}
-          selectedId={wide ? selected?.id : null}
-          onSelect={select}
-          query={query}
-          setQuery={setQuery}
-          filter={filter}
-          setFilter={setFilter}
-          sort={sort}
-          setSort={setSort}
-          className={cn('order-2 xl:order-1', wide && 'sticky top-20 max-h-[calc(100dvh-6.5rem)]')}
-        />
-        <div className="order-1 flex min-w-0 flex-col gap-5 xl:order-2">
-          {wide && selected && (
-            <Reader entry={selected} older={older} newer={newer} onSelect={setSelectedId} query={q} onDeleted={() => setSelectedId(null)} />
+      <div className={cn('grid items-start gap-5', showPanel && 'grid-cols-[minmax(0,1fr)_minmax(280px,330px)]')}>
+        <div className="flex min-w-0 flex-col gap-5">
+          {view === 'write' || !selected ? (
+            <Composer
+              ref={composerRef}
+              onClose={selected ? () => { setView('read'); focusReader(selected.id); } : undefined}
+              onSaved={(e) => {
+                setQuery('');
+                setFilter('all');
+                setSelectedId(e?.id || null);
+                setView('read');
+                if (e?.id) focusReader(e.id);
+              }}
+            />
+          ) : (
+            <Reader
+              entry={selected}
+              older={older}
+              newer={newer}
+              onSelect={setSelectedId}
+              query={q}
+              onDeleted={() => setSelectedId(null)}
+            />
           )}
-          <Composer ref={composerRef} onSaved={(e) => { setQuery(''); setFilter('all'); setSelectedId(e?.id || null); }} />
-          {wide && <Perspective />}
+          <Perspective />
         </div>
-        {!wide && <div className="order-3"><Perspective /></div>}
+
+        {showPanel && (
+          <aside id="entries-panel" aria-label="Entries" className="sticky top-20 flex max-h-[calc(100dvh-6.5rem)] min-h-0 flex-col gap-3">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-lg font-bold">Entries</h2>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="sm" onClick={togglePanel} aria-label="Hide entries" aria-expanded aria-controls="entries-panel">
+                    <PanelRightCloseIcon aria-hidden="true" />Hide
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Hide entries to give the page more room</TooltipContent>
+              </Tooltip>
+            </div>
+            {list}
+          </aside>
+        )}
       </div>
 
-      <Sheet open={!wide && !!sheetEntry} onOpenChange={(o) => { if (!o) setSheetOpen(false); }}>
-        <SheetContent side="right" className="w-full gap-0 p-5 sm:max-w-xl sm:p-7">
-          {sheetEntry && (
-            <>
-              <SheetTitle className="sr-only">{entryTitle(sheetEntry, sheetEntry.taskId && taskById(boot, sheetEntry.taskId)?.title)}</SheetTitle>
-              <SheetDescription className="sr-only">Journal entry</SheetDescription>
-              <Reader
-                bare
-                entry={sheetEntry}
-                older={sheetEntry.id === selected?.id ? older : null}
-                newer={sheetEntry.id === selected?.id ? newer : null}
-                onSelect={setSelectedId}
-                query={q}
-                onDeleted={() => { setSheetOpen(false); setSelectedId(null); }}
-              />
-            </>
-          )}
+      <Sheet open={!wide && sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent
+          side="right"
+          className="w-full gap-3 p-5 sm:max-w-md"
+          // Focus the current entry, not the search box (which would open the phone keyboard).
+          onOpenAutoFocus={(e) => {
+            e.preventDefault();
+            const el = e.currentTarget.querySelector('[aria-current="true"]') || e.currentTarget.querySelector('li button');
+            el?.focus();
+          }}
+        >
+          <SheetHeader>
+            <SheetTitle>Entries</SheetTitle>
+            <SheetDescription>Pick one to read it.</SheetDescription>
+          </SheetHeader>
+          {list}
         </SheetContent>
       </Sheet>
     </>

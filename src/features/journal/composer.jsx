@@ -4,6 +4,7 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { LockIcon, Maximize2Icon, PenLineIcon, ShuffleIcon, XIcon } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/misc';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -36,6 +37,9 @@ function loadDraft() {
 
 const hasContent = (d) => !!(d.title.trim() || d.body.trim() || d.tags.length || d.energy);
 
+/** True when an unsaved draft is waiting on this device. */
+export const hasSavedDraft = () => hasContent(loadDraft());
+
 /** The session this entry is probably about: the last one, if recent and not yet reflected on. */
 function useRecentSession() {
   const { boot } = useApp();
@@ -55,8 +59,11 @@ function Counter({ status, id, hint }) {
   );
 }
 
-/** Ref exposes focus(): scroll to the composer and put the cursor in the title. */
-export const Composer = forwardRef(function Composer({ onSaved }, fwdRef) {
+/**
+ * Ref exposes focus(): put the cursor in the title.
+ * onClose: leave the New entry view (the draft is kept).
+ */
+export const Composer = forwardRef(function Composer({ onSaved, onClose }, fwdRef) {
   const { boot, mutate } = useApp();
   const session = useRecentSession();
   const [draft, setDraft] = useState(loadDraft);
@@ -64,7 +71,6 @@ export const Composer = forwardRef(function Composer({ onSaved }, fwdRef) {
   const [full, setFull] = useState(false);
   // Start from a different question each day.
   const [promptIdx, setPromptIdx] = useState(() => Number(boot.today.slice(8, 10)) % PROMPTS.length);
-  const sectionRef = useRef(null);
   const titleRef = useRef(null);
   const ref = useRef(null);
   const fullRef = useRef(null);
@@ -75,8 +81,7 @@ export const Composer = forwardRef(function Composer({ onSaved }, fwdRef) {
 
   useImperativeHandle(fwdRef, () => ({
     focus() {
-      sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      setTimeout(() => titleRef.current?.focus({ preventScroll: true }), 250);
+      titleRef.current?.focus();
     },
   }));
 
@@ -132,7 +137,7 @@ export const Composer = forwardRef(function Composer({ onSaved }, fwdRef) {
   const placeholder = linked && session ? `How did “${session.taskTitleSnapshot}” go?` : 'Answer the question above, or write about anything.';
 
   return (
-    <section ref={sectionRef} aria-labelledby="new-h" className="flex scroll-mt-24 flex-col gap-4 rounded-xl border border-border bg-card p-5 sm:p-6">
+    <section aria-labelledby="new-h" className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex flex-col gap-1">
           <h2 id="new-h" className="flex items-center gap-2 text-lg font-bold"><PenLineIcon aria-hidden="true" className="size-5" />New entry</h2>
@@ -148,7 +153,17 @@ export const Composer = forwardRef(function Composer({ onSaved }, fwdRef) {
             )}
           </p>
         </div>
-        <span className="pt-1 text-xs text-muted-foreground" aria-live="polite">{hasContent(draft) ? 'Draft saved on this device' : ''}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground" aria-live="polite">{hasContent(draft) ? 'Draft saved on this device' : ''}</span>
+          {onClose && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label={hasContent(draft) ? 'Close. Your draft is kept.' : 'Close'}><XIcon /></Button>
+              </TooltipTrigger>
+              <TooltipContent>{hasContent(draft) ? 'Close. Your draft is kept.' : 'Close'}</TooltipContent>
+            </Tooltip>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -194,7 +209,8 @@ export const Composer = forwardRef(function Composer({ onSaved }, fwdRef) {
         </div>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        {onClose && <Button variant="outline" onClick={onClose}>{hasContent(draft) ? 'Keep as draft' : 'Cancel'}</Button>}
         <Button onClick={save} disabled={!canSave}>Save reflection</Button>
       </div>
 

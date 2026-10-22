@@ -2,7 +2,7 @@
 
 FocusFlow is a static site: everything runs in the visitor's browser, so GitHub Pages can host it for free. Each visitor's data stays in their own browser, and each visitor uses their own AI key (or demo mode). You are never charged for other people's usage.
 
-The repository contains the publishing workflow (`.github/workflows/pages.yml`). Every push to `main` runs two jobs:
+The repository contains the publishing workflow (`.github/workflows/pages.yml`). Every push to `main` (or `master`) runs two jobs:
 
 1. **build**: installs packages (`npm ci`), runs the tests, builds the React app into `dist/`, and uploads it.
 2. **deploy**: publishes `dist/` to GitHub Pages.

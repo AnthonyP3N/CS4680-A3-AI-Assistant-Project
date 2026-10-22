@@ -4,7 +4,7 @@ import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, C
 import { api } from '@/data/api';
 import { navigate } from '@/hooks/use-hash-route';
 import { useApp } from '@/state/app';
-import { focusQuickAdd, useUi } from '@/state/ui';
+import { focusQuickAdd, openNewEntry, useUi } from '@/state/ui';
 
 export function CommandPalette({ open, onOpenChange }) {
   const { boot, mutate } = useApp();
@@ -47,7 +47,7 @@ export function CommandPalette({ open, onOpenChange }) {
           <CommandItem onSelect={run(() => { navigate('today'); setTimeout(() => focusQuickAdd(), 60); })}><PlusIcon />New task<CommandShortcut>N</CommandShortcut></CommandItem>
           <CommandItem onSelect={run(() => { navigate('today'); window.dispatchEvent(new CustomEvent('focusflow:plan')); })}><SparklesIcon />Plan the rest of my day</CommandItem>
           <CommandItem onSelect={run(() => { navigate('insights'); })}><SparklesIcon />Review this week</CommandItem>
-          <CommandItem onSelect={run(() => navigate('journal'))}><NotebookPenIcon />Write a reflection</CommandItem>
+          <CommandItem onSelect={run(openNewEntry)}><NotebookPenIcon />New journal entry</CommandItem>
         </CommandGroup>
         {!boot.activeSession && open_.length > 0 && (
           <CommandGroup heading="Start a timer">

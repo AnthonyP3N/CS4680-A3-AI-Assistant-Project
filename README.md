@@ -26,11 +26,11 @@ FocusFlow closes it: **plan → track → reflect → understand → improve.**
 |---|---|
 | **Today** | Quick add that understands `45m`, `2h`, `today`/`fri`, `high`/`low` and `#category`, with a live preview of what it understood. A category picker with a built-in list (Studying, Homework, Work, Exercise, Health, Personal, Errands, Chores, Bills, Finances, Social, Other) where you can search or create your own; `#study` or `#bills` in quick add matches them too. Tasks grouped into Overdue, Due today, This week and Later. **Plan the rest of my day** sends your open tasks to the AI and shows a timeline you accept block by block. **Split into steps** breaks a big task into subtasks. |
 | **Focus** | Start, pause, resume, stop. The timer survives refresh (time comes from timestamps) and shows in the header and tab title on every page. Log time by hand if you forgot to start it. |
-| **Journal** | Entries on the left, grouped by month, with search, filters (wins, stuck, low energy, after a session…) and newest/oldest order. The selected entry opens in full in a reading pane, with older/newer links, edit in place, copy and delete with undo. Below it, **New entry** offers a question to start from, an optional title, energy (low / OK / high), tags, an autosaved draft, a word count and full-screen writing. Entries up to 10,000 characters (about 1,500 words). On phones, an entry opens in a side sheet. |
+| **Journal** | The main area shows one thing at a time: the entry you're reading, or **New entry**. Reading: full text, older/newer links, edit in place, copy, and delete with undo. New entry: a question to start from, an optional title, energy (low / OK / high), tags, an autosaved draft (**Keep as draft** returns to reading), a word count and full-screen writing. Entries sit in a panel on the right with search, filters and newest/oldest order; **Hide** and **Show entries** fold it away (remembered), and on smaller screens it opens as a side sheet. Entries up to 10,000 characters (about 1,500 words). |
 | **Insights** | Day, week and month: focused time, completion rate and estimate accuracy (with change from the last period), a day-by-day chart with a table view, time by category, and an estimate-versus-reality ledger. **Write my review** asks the AI for patterns and two suggestions you can add as tasks. |
 | **AI history** | Every AI request: what was sent, what came back, how it was checked, tokens used, and what you decided. |
 
-![Journal: entry list, reading pane and the new-entry form](docs/screenshots/journal.png)
+![Journal: an entry open for reading, with the entries panel on the right](docs/screenshots/journal.png)
 
 Small things that make it easier to use every day:
 
@@ -150,7 +150,7 @@ src/
   features/
     today/                 Quick add, task list, split into steps, plan panel
     focus/                 Timer, log time, check-in sheet after a session
-    journal/               Entry list, reader (edit, older/newer), composer
+    journal/               Reader, New entry form, entries panel
     insights/              Tiles, chart, ledger, AI review
     history/               AI request log
     settings/, setup/      AI key settings and first-run guided setup
@@ -205,7 +205,7 @@ Your data lives in your browser. **Settings → Export my data** downloads a bac
 
 ## Publishing
 
-Pushing to `main` runs the tests, builds the site and publishes it to GitHub Pages. See [DEPLOY.md](DEPLOY.md).
+Pushing to `main` or `master` runs the tests, builds the site and publishes it to GitHub Pages. See [DEPLOY.md](DEPLOY.md).
 
 ## Roadmap
 

@@ -90,8 +90,7 @@ export function EntryList({ entries, total, selectedId, onSelect, query, setQuer
   const filtered = entries.length !== total;
 
   return (
-    <section aria-labelledby="entries-h" className={cn('flex min-h-0 flex-col gap-3', className)}>
-      <h2 id="entries-h" className="sr-only">Past entries</h2>
+    <section aria-label="Past entries" className={cn('flex min-h-0 flex-col gap-3', className)}>
       <label className="flex h-11 items-center gap-2 rounded-md border border-input bg-card px-3 focus-within:outline-3 focus-within:outline-ring">
         <SearchIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
         <span className="sr-only">Search your reflections</span>

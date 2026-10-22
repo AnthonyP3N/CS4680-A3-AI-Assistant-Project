@@ -23,7 +23,7 @@
 | 2:30 | Open **Checked by FocusFlow**. Click **Add as a task** on a suggestion. | "This is the iterative-refinement loop: code checks the draft and sends specific problems back. Suggestions become tasks in one click." |
 | 2:50 | Back on **Today**, click **Plan the rest of my day**. Untick a block, then **Add N blocks to today**. Click **Undo** on the toast, then add again. | "Persona and few-shot examples teach it to fit my time, add breaks, and say what didn't fit. I choose every block, and everything can be undone." |
 | 3:20 | Open **AI history**. Expand the plan. | "Every request is logged: what was sent, how it was checked, how many tokens it used on my own key." |
-| 3:40 | Press **Ctrl K**, type "journal", Enter. Click the check-in from earlier to open it in the reading pane, then show the published URL. | "It's live on GitHub Pages. Everyone brings their own key, stored only in their browser, so it's free to run. Questions?" |
+| 3:40 | Press **Ctrl K**, type "journal", Enter. Click the check-in from earlier in the Entries panel to read it, click **Hide** to fold the panel away, then show the published URL. | "It's live on GitHub Pages. Everyone brings their own key, stored only in their browser, so it's free to run. Questions?" |
 
 ### If someone asks…
 
